@@ -5,7 +5,7 @@
  *   player    a short name; lets several players share one Sheet later (one Progress tab per player).
  */
 window.FF_CONFIG = {
-  endpoint: '',
-  key: '',
+  endpoint: 'https://script.google.com/macros/s/AKfycbyofktiRdEuXn2xfZEvWtvV0ta3V2UHQBtKZv99zFWBABxa90eg6iwNeqk1YGpUfw11/exec',
+  key: 'nabil-me',
   player: 'nabil'
 };
