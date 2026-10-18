@@ -1,7 +1,7 @@
 /* Figures & Formulas — the MasterType-style game. One of possibly several front ends to FF.Scheduler. */
 (function () {
 'use strict';
-const VERSION = '2.0.0';
+const VERSION = '2.0.1';
 const $ = s => document.querySelector(s);
 const W = 560, H = 420, CX = 280, CY = 210;
 const { FAM, ITEMS, ORDER, fmt, hash } = FF.facts;
@@ -108,7 +108,7 @@ function startWave() {
     G.boss = { id, item: ITEMS[id], hp: 4 + Math.floor(G.wave / 4), maxHp: 4 + Math.floor(G.wave / 4), askedAt: performance.now() / 1000, lastDmg: performance.now() / 1000, dmgFlash: 0, graded: false, misses: 0 };
     G.needed = 1; SFX.boss(); showBanner('DREADNOUGHT · ONLY FAST ANSWERS HURT IT', COL.violet, 2.6);
   } else G.needed = Math.min(16, 6 + 2 * G.wave);
-  mode = 'play'; overlayHide(); updateHud();
+  mode = 'play'; overlayHide(); updateHud(); grabKeys();
 }
 function maxActive() { return G.wave < 3 ? 1 : G.wave < 5 ? 2 : G.wave < 8 ? 3 : 4; }
 function enemySpeed() { const acc = sched.accuracy(); const am = acc < .8 ? .55 : acc < .9 ? .75 : 1; return 26 * (1 + .09 * (G.wave - 1)) * am * G.thrust; }
@@ -422,7 +422,7 @@ function showShop() {
 function togglePause() {
   if (mode === 'play') { mode = 'pause'; overlay(`<h2>PAUSED</h2><p class="muted">Esc or the button to resume.</p><div class="row"><button class="primary" id="ovRes">Resume</button><button id="ovQuit">End run</button></div>`);
     $('#ovRes').onclick = togglePause; $('#ovQuit').onclick = () => { endRun(); }; }
-  else if (mode === 'pause') { mode = 'play'; overlayHide(); lastT = performance.now(); }
+  else if (mode === 'pause') { mode = 'play'; overlayHide(); lastT = performance.now(); grabKeys(); }
 }
 
 /* ---------- stats & settings ---------- */
@@ -472,7 +472,7 @@ function showStats() {
   $('#pImport').onclick = () => { try { const o = JSON.parse($('#imp').value); if (!o || !o.cards) throw 0; S = Object.assign(FF.store.defaultState(), o); save(); sched = new FF.Scheduler(FF.facts, S, { onChange: save }); showStats(); } catch (e) { $('#pImport').textContent = 'That is not a valid export'; } };
 }
 function showSettings() {
-  const s = S.settings; const touch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  const s = S.settings;
   panel(`<div class="row" style="justify-content:space-between"><h2>SETTINGS</h2><button id="pClose">Close</button></div>
   ${remote ? '<p class="muted">These are saved to the Sheet too, so they follow him to any device.</p>' : ''}
   <h3>Fact families</h3>
@@ -487,7 +487,7 @@ function showSettings() {
   <label class="opt">New facts per day <input type="number" id="setNew" min="0" max="60" value="${s.newPerDay}"></label>
   <p class="muted">Due facts always come first; new ones fill in after. 10–15 a day is plenty.</p>
   <h3>Input</h3>
-  <label class="opt"><input type="checkbox" id="setPad" ${(s.numpad === null ? touch : s.numpad) ? 'checked' : ''}> Show on-screen number pad</label>
+  <label class="opt"><input type="checkbox" id="setPad" ${padOn() ? 'checked' : ''}> Show on-screen number pad</label>
   <label class="opt"><input type="checkbox" id="setSnd" ${s.sound ? 'checked' : ''}> Sound</label>
   <h3>Danger zone</h3>
   <div class="row" style="justify-content:flex-start"><button class="danger" id="pReset">Reset progress in this browser</button></div>`);
@@ -498,8 +498,14 @@ function showSettings() {
     S = FF.store.defaultState(); save(); sched = new FF.Scheduler(FF.facts, S, { onChange: save }); hidePanel(); showTitle(); };
 }
 function panel(html) { $('#panelIn').innerHTML = html; $('#panel').hidden = false; if (mode === 'play') togglePause(); }
-function hidePanel() { $('#panel').hidden = true; }
-function applyNumpad() { const touch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; $('#numpad').hidden = !(S.settings.numpad === null ? touch : S.settings.numpad); }
+function hidePanel() { $('#panel').hidden = true; grabKeys(); }
+function isTouch() { try { return ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches || /iPad|iPhone|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch (e) { return false; } }
+function padOn() { return S.settings.numpad === null ? isTouch() : !!S.settings.numpad; }
+function applyNumpad() { $('#numpad').hidden = !padOn(); $('#btnPad').textContent = 'Numpad: ' + (padOn() ? 'on' : 'off'); }
+/* A hidden focused input: iPadOS only delivers hardware Backspace (and some other keys) to a focused text field.
+   inputmode="none" keeps the on-screen keyboard away, so the number pad still does that job on touch. */
+const kb = $('#kb');
+function grabKeys() { if (mode === 'play' && $('#panel').hidden) { try { kb.focus({ preventScroll: true }); } catch (e) {} } }
 
 /* ---------- input ---------- */
 function key(k) {
@@ -513,17 +519,24 @@ function key(k) {
 }
 document.addEventListener('keydown', ev => {
   if (!$('#panel').hidden) return;
-  const tag = (ev.target && ev.target.tagName) || ''; if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
+  const tag = (ev.target && ev.target.tagName) || ''; if (ev.target !== kb && (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT')) return;
   if (ev.key === 'Escape') { key('pause'); ev.preventDefault(); return; }
   if (ev.key === 'Enter' && (mode === 'shop' || mode === 'title' || mode === 'over')) { const b = $('#ovNext') || $('#ovDone') || $('#ovStart'); if (b) { b.click(); ev.preventDefault(); } return; }
   if (mode !== 'play') return;
   if (ev.key === 'Enter') { key('fire'); ev.preventDefault(); }
   else if (ev.key === ' ') { key('emp'); ev.preventDefault(); }
-  else if (ev.key === 'Backspace') { key('bs'); ev.preventDefault(); }
+  else if (ev.key === 'Backspace' || ev.key === 'Delete') { key('bs'); ev.preventDefault(); }
   else if (ev.key === '-' || ev.key === '−' || ev.key === 'Subtract') { key('-'); ev.preventDefault(); }
   else if (/^[0-9]$/.test(ev.key)) { key(ev.key); ev.preventDefault(); }
 });
-$('#numpad').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; audio(); key(b.dataset.k); });
+kb.addEventListener('beforeinput', ev => { ev.preventDefault(); if (mode !== 'play') return;
+  if (ev.inputType === 'deleteContentBackward' || ev.inputType === 'deleteContentForward') key('bs');
+  else if (ev.inputType === 'insertLineBreak' || ev.inputType === 'insertParagraph') key('fire');
+  else if (ev.inputType === 'insertText' && ev.data) for (const ch of ev.data) { if (/[0-9]/.test(ch)) key(ch); else if (ch === '-' || ch === '−') key('-'); else if (ch === ' ') key('emp'); } });
+kb.addEventListener('input', () => { kb.value = ''; });
+$('#numpad').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; audio(); key(b.dataset.k); grabKeys(); });
+$('#btnPad').onclick = () => { S.settings.numpad = !padOn(); save(); applyNumpad(); grabKeys(); };
+document.querySelector('.screenwrap').addEventListener('pointerdown', () => { grabKeys(); });
 $('#btnStart').onclick = () => { audio(); if (mode === 'play' || mode === 'pause') { if (mode === 'pause') togglePause(); return; } newRun(); startWave(); };
 $('#btnStats').onclick = showStats;
 $('#btnSettings').onclick = showSettings;

@@ -96,6 +96,7 @@ kbd{border:1px solid var(--phos-dim);padding:0 5px;border-radius:3px;font:inheri
 select{font:inherit;background:var(--screen);color:var(--phos);border:1px solid var(--phos-dim);padding:2px 6px}
 .fam-mul{color:var(--violet)} .fam-div{color:var(--warn)} .fam-negmul{color:var(--danger)}
 /* stats + settings panel */
+#kb{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0;pointer-events:none;caret-color:transparent}
 .panel{position:fixed;inset:0;z-index:20;overflow:auto;background:var(--bg);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   padding-block:16px}
@@ -146,6 +147,7 @@ html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset
 
   <div class="bezel">
     <div class="screenwrap">
+      <input id="kb" type="text" inputmode="none" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Answer input" tabindex="-1">
       <canvas id="screen" width="560" height="420" aria-label="Game screen: a ship at the center, enemies approaching from the corners"></canvas>
       <div class="scan"></div>
       <div id="overlay" class="overlay"></div>
@@ -164,6 +166,7 @@ html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset
       <button id="btnStart" class="primary">Start run</button>
       <button id="btnStats">Stats</button>
       <button id="btnSettings">Settings</button>
+      <button id="btnPad">Numpad</button>
     </div>
     <div class="grp">
       <button id="btnSound">Sound: on</button>
