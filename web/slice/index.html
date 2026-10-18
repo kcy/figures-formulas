@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Slice of Truth</title>
+<meta name="description" content="Equations fly up on fruit. Slice the false ones.">
+<meta name="theme-color" content="#06080a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Slice">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+<style>html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+<div class="console">
+  <header class="hud">
+    <div class="brand"><a href="../" class="home" title="Back to the hub">◀</a> SLICE OF TRUTH <span class="ver" id="ver">v1</span></div>
+    <div class="hud-stats">
+      <span id="hudTime">TIME 60</span>
+      <span id="hudScore">SCORE 0</span>
+      <span id="hudStrikes" class="hp">STRIKES ○○○</span>
+      <span id="hudCombo" class="combo"></span>
+      <span id="hudGoal">TODAY 0/60</span>
+      <span id="hudSync" class="sync">LOCAL</span>
+    </div>
+  </header>
+
+  <div class="bezel">
+    <div class="screenwrap">
+      <canvas id="slice" width="560" height="420" aria-label="Game screen: fruit carrying equations fly up; slice the false ones"></canvas>
+      <div class="scan"></div>
+      <div id="overlay" class="overlay"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="grp">
+      <button id="btnStart" class="primary">Start round</button>
+      <button id="btnStats">Stats</button>
+      <button id="btnSettings">Settings</button>
+    </div>
+    <div class="grp">
+      <button id="btnSound">Sound: on</button>
+    </div>
+  </div>
+  <p class="help">Each fruit carries an equation. <b>Slice the false ones</b> by dragging across them, or just click them. Leave true ones alone: slicing a true equation is a strike, and three strikes end the round. Letting a false one get away costs no strike, but it breaks your combo. <kbd>Esc</kbd> pauses.</p>
+</div>
+
+<div id="panel" class="panel" hidden><div class="panel-in" id="panelIn"></div></div>
+
+<script src="../config.js"></script>
+<script src="../js/facts.js"></script>
+<script src="../js/scheduler.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/player.js"></script>
+<script src="../js/sync.js"></script>
+<script src="slice.js"></script>
+</body>
+</html>

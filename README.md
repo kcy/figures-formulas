@@ -1,19 +1,27 @@
 # Figures & Formulas
 
-A MasterType-style math fluency game (1981 lineage, Apple II look) built around a spaced-repetition scheduler.
-Enemies carry arithmetic problems; you type the answer and the ship fires at the one that matches.
-Wrong answers cost shields, five right in a row restores one, and every fourth wave is a boss that only fast answers can hurt.
+Math fluency games on one spaced-repetition scheduler. Two so far:
+
+- **Figures & Formulas** (`web/shooter/`): MasterType-style. Enemies carry problems; type the answer and the ship fires. Production practice.
+- **Slice of Truth** (`web/slice/`): equations fly up on fruit; slice the false ones. Verification practice, with the kind of each mistake recorded.
+
+The hub (`web/index.html`) picks the player and the game. Both games report to the same scheduler and the same Sheet, so a fact drilled in one comes due in the other.
+Only typed answers can make a fact *fluent*; slicing schedules it but never promotes it on recognition alone.
 
 ## Layout
 
 ```
-web/                 the game, served as-is by GitHub Pages
-  index.html         page + CSS
-  config.js          deployment settings: the Sheet endpoint, shared key, player name  ← the one file to edit
+web/                 served as-is by GitHub Pages
+  index.html         the hub: player picker + game cards
+  config.js          deployment settings: Sheet endpoint, shared key, players  ← the one file to edit
+  css/theme.css      the shared look
   js/facts.js        the knowledge set, generated in layers (core · signed · strategies)
   js/scheduler.js    SM-2-style scheduler graded by correctness + response time; game-agnostic
   js/store.js        LocalStore (browser) and SheetStore (Google Sheet via Apps Script)
-  js/game.js         the MasterType game: one front end to the scheduler
+  js/player.js       who is playing (remembered per device; ?player= overrides)
+  js/sync.js         load/save against the Sheet, shared by every game
+  shooter/           Figures & Formulas (typed answers)
+  slice/             Slice of Truth (catch the false equations)
   sw.js, manifest    offline support and "Add to Home Screen"
 apps-script/Code.gs  paste into the Sheet's Apps Script editor; see the header comment
 tools/export-facts.js  dumps the generated fact set as CSV
@@ -37,6 +45,11 @@ If the Sheet is unreachable the game plays from browser storage and syncs next t
 ## Updating the game
 
 Push to `main`. The Pages workflow deploys `web/` and stamps the service-worker cache with the commit, so open copies pick up the new version on their next load.
+
+## Adding a game
+
+A game needs four calls: `FF.player.current()` for who, `FF.store.LocalStore.load/save` for state, `new FF.Scheduler(FF.facts, S, {onChange})`
+for `next()` / `report(id, ok, seconds, {kind, error, fastMul})`, and `new FF.Sync({...})` for the Sheet. Copy `slice/` as a template and add a card to the hub.
 
 ## Adding knowledge
 

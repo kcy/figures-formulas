@@ -6,7 +6,7 @@
  *   Execute as: Me        Who has access: Anyone
  * and put the …/exec URL plus the same SECRET into web/config.js.
  *
- * Tabs it keeps:
+ * Tabs it keeps (Sessions.game says which game a row came from: mastertype or slice):
  *   Settings   key | value                    — goal, newPerDay, maxLayer, fam_add … fam_negmul (TRUE/FALSE)
  *   Facts      id | prompt | answer | fam | op | layer | strategy | mode | enabled | custom
  *              The game fills this with its whole catalog the first time it connects.
@@ -19,7 +19,7 @@
  */
 var SECRET = 'change-me';
 
-var PROGRESS_COLS = ['id', 'prompt', 'fam', 'strategy', 'stage', 'att', 'ok', 'accuracy', 'median_s', 'lapses', 'interval_d', 'due', 'reps', 'ease', 'fast_streak', 'last_review', 'updated'];
+var PROGRESS_COLS = ['id', 'prompt', 'fam', 'strategy', 'stage', 'att', 'ok', 'accuracy', 'median_s', 'lapses', 'interval_d', 'due', 'reps', 'ease', 'fast_streak', 'last_review', 'updated', 'verify_att', 'verify_ok', 'errors'];
 var FACT_COLS = ['id', 'prompt', 'answer', 'fam', 'op', 'layer', 'strategy', 'mode', 'enabled', 'custom'];
 var SESSION_COLS = ['ts', 'player', 'game', 'version', 'wave', 'score', 'answers', 'correct', 'facts', 'bestStreak', 'seconds'];
 var HISTORY_COLS = ['date', 'answers', 'correct'];
@@ -68,7 +68,8 @@ function load(ss, player) {
   pr.forEach(function (r) {
     if (!r.id) return;
     progress[r.id] = { att: num(r.att), ok: num(r.ok), lapses: num(r.lapses), iv: num(r.interval_d), due: r.due ? new Date(r.due).getTime() : 0, reps: num(r.reps),
-      e: num(r.ease) || 2.5, fs: num(r.fast_streak), stage: r.stage || 'learning', lo: r.last_review ? isoDay(new Date(r.last_review)) : '', rts: r.median_s ? [num(r.median_s)] : [] };
+      e: num(r.ease) || 2.5, fs: num(r.fast_streak), stage: r.stage || 'learning', lo: r.last_review ? isoDay(new Date(r.last_review)) : '', rts: r.median_s ? [num(r.median_s)] : [],
+      vatt: num(r.verify_att), vok: num(r.verify_ok), err: parseErrors(r.errors) };
   });
   return { settings: settings, facts: custom, disabled: disabled, progress: progress, needCatalog: fr.length === 0 };
 }
@@ -79,7 +80,7 @@ function save(ss, player, body) {
     var sh = sheet(ss, suffixed('Progress', player), PROGRESS_COLS), index = idIndex(sh), now = new Date();
     body.progress.forEach(function (c) {
       var row = [c.id, c.prompt || '', c.fam || '', c.strategy || '', c.stage, c.att, c.ok, c.att ? Math.round(1000 * c.ok / c.att) / 10 : '', c.median ? Math.round(c.median * 100) / 100 : '',
-        c.lapses, c.iv, c.due ? new Date(c.due) : '', c.reps, Math.round(c.e * 100) / 100, c.fs, c.lo || '', now];
+        c.lapses, c.iv, c.due ? new Date(c.due) : '', c.reps, Math.round(c.e * 100) / 100, c.fs, c.lo || '', now, c.vatt || 0, c.vok || 0, c.errors || ''];
       var r = index[c.id];
       if (r) sh.getRange(r, 1, 1, row.length).setValues([row]); else { sh.appendRow(row); index[c.id] = sh.getLastRow(); }
       n++;
@@ -140,6 +141,9 @@ function fillFromFacts(ss, prog) {
 function sheet(ss, name, cols) {
   var sh = ss.getSheetByName(name);
   if (!sh) { sh = ss.insertSheet(name); sh.getRange(1, 1, 1, cols.length).setValues([cols]).setFontWeight('bold'); sh.setFrozenRows(1); }
+  else if (sh.getLastColumn() < cols.length) { // a newer version added columns: extend the header in place
+    var have = sh.getLastColumn(); sh.getRange(1, have + 1, 1, cols.length - have).setValues([cols.slice(have)]).setFontWeight('bold');
+  }
   return sh;
 }
 function rows(sh) {
@@ -150,6 +154,7 @@ function rows(sh) {
 }
 function idIndex(sh) { var v = sh.getDataRange().getValues(), m = {}; for (var i = 1; i < v.length; i++) if (v[i][0]) m[v[i][0]] = i + 1; return m; }
 function suffixed(base, player) { return player === 'default' ? base : base + '_' + player; }
+function parseErrors(s) { var o = {}; String(s || '').split(/\s+/).forEach(function (t) { var m = t.match(/^(.+):(\d+)$/); if (m) o[m[1]] = Number(m[2]); }); return o; }
 function num(x) { var n = Number(x); return isNaN(n) ? 0 : n; }
 function isoDay(d) { if (!(d instanceof Date)) return String(d); return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd'); }
 function out(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }

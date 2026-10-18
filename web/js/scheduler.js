@@ -33,18 +33,25 @@
   P.accuracy = function () { return this.recent.length >= 8 ? this.recent.filter(Boolean).length / this.recent.length : 1; };
   P.fastFor = function (id) { return this.F.FAM[this.F.ITEMS[id].fam].fast; };
 
-  P.report = function (id, ok, rt) {
+  /* opts.kind: 'produce' (typed the answer, default) or 'verify' (judged an answer true/false — a slicing game).
+   * Both schedule the fact; only production advances the fluency streak, so a fact is never 'fluent' on recognition alone.
+   * opts.error: a short tag for the kind of mistake (sign, off_by_one, neighbor_table …), tallied per fact for the Sheet.
+   * opts.fastMul: the game's own idea of 'fast' relative to the family target (a swipe is slower than a keypress). */
+  P.report = function (id, ok, rt, opts) {
+    opts = opts || {};
     this.rollDaily();
-    const S = this.S, now = Date.now(), fast0 = this.fastFor(id);
+    const S = this.S, now = Date.now(), fast0 = this.fastFor(id) * (opts.fastMul || 1), verify = opts.kind === 'verify';
     let c = S.cards[id]; if (!c) { c = S.cards[id] = newCard(); S.daily.newCount++; }
     c.att++; S.meta.answers++;
+    if (verify) { c.vatt = (c.vatt || 0) + 1; if (ok) c.vok = (c.vok || 0) + 1; }
+    if (!ok && opts.error) { c.err = c.err || {}; c.err[opts.error] = (c.err[opts.error] || 0) + 1; }
     if (!ok) {
       c.lapses++; c.reps = 0; c.iv = 0; c.e = Math.max(1.3, c.e - 0.2); c.fs = 0; c.stage = 'learning'; c.due = now + 10 * 60000;
       this.replay.push({ id, at: now + 45000 + Math.random() * 30000 });
     } else {
       c.ok++; c.rts.push(Math.round(rt * 100) / 100); if (c.rts.length > 6) c.rts.shift();
       const fast = rt < fast0, slow = rt > fast0 * 2, q = fast ? 5 : slow ? 3 : 4;
-      c.fs = fast ? c.fs + 1 : 0;
+      c.fs = verify ? c.fs : (fast ? c.fs + 1 : 0);
       if (c.lo !== today()) { // one scheduled review per day; extra hits in a session feed the fluency streak only
         if (c.reps === 0) c.iv = 1; else if (c.reps === 1) c.iv = 3; else c.iv = c.iv * (q === 3 ? 1.2 : q === 4 ? c.e : c.e * 1.3);
         c.reps++; c.e = Math.max(1.3, c.e + 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)); c.lo = today();
@@ -88,7 +95,7 @@
   /* Progress rows for the Sheet: one per card that changed since the last flush. */
   P.flushDirty = function () {
     const out = [];
-    for (const id of this.dirty) { const c = this.S.cards[id]; if (c) out.push(Object.assign({ id, median: median(c.rts) }, c)); }
+    for (const id of this.dirty) { const c = this.S.cards[id]; if (c) out.push(Object.assign({ id, median: median(c.rts), errors: c.err ? Object.entries(c.err).map(([k, v]) => k + ':' + v).join(' ') : '' }, c)); }
     this.dirty.clear();
     return out;
   };

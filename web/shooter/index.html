@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Figures &amp; Formulas</title>
+<meta name="description" content="A MasterType-style math fluency game with a spaced-repetition scheduler.">
+<meta name="theme-color" content="#06080a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Figures">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
+</head>
+<body>
+<div class="console">
+  <header class="hud">
+    <div class="brand"><a href="../" class="home" title="Back to the hub">◀</a> FIGURES &amp; FORMULAS <span class="ver" id="ver">v2</span></div>
+    <div class="hud-stats">
+      <span id="hudWave">WAVE —</span>
+      <span id="hudScore">SCORE 0</span>
+      <span id="hudHp" class="hp">SHIELDS ◤◥◣◢</span>
+      <span id="hudHull" class="hp">HULL ▮▮▮</span>
+      <span id="hudGoal">TODAY 0/60</span>
+      <span id="hudSync" class="sync" title="Progress is saved in this browser">LOCAL</span>
+    </div>
+  </header>
+
+  <div class="bezel">
+    <div class="screenwrap">
+      <input id="kb" type="text" inputmode="none" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Answer input" tabindex="-1">
+      <canvas id="screen" width="560" height="420" aria-label="Game screen: a ship at the center, enemies approaching from the corners"></canvas>
+      <div class="scan"></div>
+      <div id="overlay" class="overlay"></div>
+    </div>
+  </div>
+
+  <div class="numpad" id="numpad" hidden>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="-">−</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="bs">⌫</button>
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="emp">EMP</button>
+    <button data-k="0">0</button><button data-k="fire" class="fire">FIRE</button><button data-k="pause">❚❚</button>
+  </div>
+
+  <div class="controls">
+    <div class="grp">
+      <button id="btnStart" class="primary">Start run</button>
+      <button id="btnStats">Stats</button>
+      <button id="btnSettings">Settings</button>
+      <button id="btnPad">Numpad</button>
+    </div>
+    <div class="grp">
+      <button id="btnSound">Sound: on</button>
+    </div>
+  </div>
+  <p class="help">Type the answer to any enemy's problem, then <kbd>Enter</kbd>. <kbd>-</kbd> for negatives, <kbd>Backspace</kbd> to fix, <kbd>Space</kbd> fires an EMP if you have one, <kbd>Esc</kbd> pauses. Each corner has its own shield. A miss gets one retry; a second miss, or an enemy reaching the ship, knocks out that corner's shield, and an open corner damages the hull. Five right in a row restores a shield.</p>
+</div>
+
+<div id="panel" class="panel" hidden><div class="panel-in" id="panelIn"></div></div>
+<script src="../config.js"></script>
+<script src="../js/facts.js"></script>
+<script src="../js/scheduler.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/player.js"></script>
+<script src="../js/sync.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

@@ -1,67 +1,31 @@
 /* Figures & Formulas — the MasterType-style game. One of possibly several front ends to FF.Scheduler. */
 (function () {
 'use strict';
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 const $ = s => document.querySelector(s);
 const W = 560, H = 420, CX = 280, CY = 210;
 const { FAM, ITEMS, ORDER, fmt, hash } = FF.facts;
-const { LocalStore, SheetStore, mergeProgress } = FF.store;
+const { LocalStore } = FF.store;
 const { median, today } = FF.util;
 
 /* ================= STATE, SCHEDULER, SYNC ================= */
 const CFG = window.FF_CONFIG || {};
-const PLAYERS = (CFG.players && CFG.players.length ? CFG.players : [CFG.player || 'player']).map(p => String(p).toLowerCase());
-const urlPlayer = (() => { try { const p = new URLSearchParams(location.search).get('player'); return p && PLAYERS.includes(p.toLowerCase()) ? p.toLowerCase() : null; } catch (e) { return null; } })();
-let player = urlPlayer || LocalStore.currentPlayer(PLAYERS.includes(CFG.player) ? CFG.player : PLAYERS[0]);
-if (!PLAYERS.includes(player)) player = PLAYERS[0];
-let S = LocalStore.load(player, PLAYERS[0]);
-function save() { LocalStore.save(S, player, PLAYERS[0]); }
+const { PLAYERS, cap } = FF.player;
+let player = FF.player.current();
+let S = LocalStore.load(player, FF.player.FIRST);
+function save() { LocalStore.save(S, player, FF.player.FIRST); }
 let sched = new FF.Scheduler(FF.facts, S, { onChange: save });
-let remote = null, syncTimer = null;
-const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+function setSync(cls, text, title) { const el = $('#hudSync'); if (!el) return; el.className = 'sync ' + (cls === 'local' ? '' : cls); el.textContent = text; el.title = title || ''; }
+function makeSync() { return new FF.Sync({ player, getState: () => S, getSched: () => sched, onStatus: setSync, onLoaded: updateHud }); }
+let sync = makeSync();
 function switchPlayer(p) {
   if (!PLAYERS.includes(p) || p === player) return;
-  clearTimeout(syncTimer); if (remote && sched.dirty.size) { const rows = sched.flushDirty(); remote.saveProgress(rows, null, S.history.slice(-1)[0]).catch(() => {}); }
-  player = p; LocalStore.setPlayer(p);
-  S = LocalStore.load(player, PLAYERS[0]); sched = new FF.Scheduler(FF.facts, S, { onChange: save }); sched.disabled = new Set();
-  if (CFG.endpoint) { remote = new SheetStore(Object.assign({}, CFG, { player })); remoteLoad(); }
+  sync.flushNow();
+  player = p; FF.player.set(p);
+  S = LocalStore.load(player, FF.player.FIRST); sched = new FF.Scheduler(FF.facts, S, { onChange: save });
+  sync = makeSync(); sync.load();
   applyNumpad(); showTitle();
 }
-
-function setSync(cls, text, title) { const el = $('#hudSync'); if (!el) return; el.className = 'sync ' + cls; el.textContent = text; el.title = title || ''; }
-function applyRemoteSettings(rs) {
-  if (!rs) return;
-  const s = S.settings;
-  if (rs.fams) for (const f in rs.fams) if (FAM[f]) s.fams[f] = !!rs.fams[f];
-  for (const k of ['maxLayer', 'newPerDay', 'goal']) if (rs[k] != null && !isNaN(+rs[k])) s[k] = +rs[k];
-}
-async function remoteLoad() {
-  if (!remote) return;
-  setSync('busy', 'SYNC…');
-  try {
-    const r = await remote.load();
-    if (r.facts && r.facts.length) FF.facts.addCustom(r.facts);
-    applyRemoteSettings(r.settings);
-    if (r.disabled) sched.disabled = new Set(r.disabled);
-    if (r.progress) mergeProgress(S.cards, r.progress);
-    S.synced = Date.now(); save();
-    setSync('ok', 'SHEET ✓', 'Loaded from your Sheet ' + new Date().toLocaleTimeString());
-    if (r.needCatalog) remote.sendCatalog(Object.values(ITEMS).map(it => ({ id: it.id, prompt: it.prompt, answer: it.answer, fam: it.fam, op: it.op, layer: it.layer, strategy: it.strategy, mode: it.mode }))).catch(() => {});
-    updateHud();
-  } catch (e) { setSync('err', 'SHEET ✗', 'Could not reach the Sheet: ' + (remote.lastError || e)); }
-}
-function remoteSave(session) {
-  if (!remote) return;
-  const rows = sched.flushDirty();
-  if (!rows.length && !session) return;
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(async () => {
-    setSync('busy', 'SYNC…');
-    try { await remote.saveProgress(rows, session, S.history.slice(-1)[0]); S.synced = Date.now(); save(); setSync('ok', 'SHEET ✓', 'Saved to your Sheet ' + new Date().toLocaleTimeString()); }
-    catch (e) { rows.forEach(r => sched.dirty.add(r.id)); setSync('err', 'SHEET ✗', 'Save failed, will retry: ' + (remote.lastError || e)); }
-  }, 300);
-}
-function remoteSettings() { if (remote) remote.saveSettings({ fams: S.settings.fams, maxLayer: S.settings.maxLayer, newPerDay: S.settings.newPerDay, goal: S.settings.goal }).catch(() => {}); }
 
 /* ================= AUDIO ================= */
 let AC = null;
@@ -217,7 +181,7 @@ function emp() {
 }
 function sessionRow() { return { ts: new Date().toISOString(), game: 'mastertype', version: VERSION, wave: G.wave, score: G.score, answers: G.answers, correct: G.correct, facts: G.practiced.size, bestStreak: G.bestStreak, seconds: Math.round((Date.now() - G.startedAt) / 1000) }; }
 function waveCleared() {
-  G.score += 25 * G.wave; G.credits += 25 * G.wave; S.meta.bestWave = Math.max(S.meta.bestWave, G.wave); save(); remoteSave(null);
+  G.score += 25 * G.wave; G.credits += 25 * G.wave; S.meta.bestWave = Math.max(S.meta.bestWave, G.wave); save(); sync.save(null);
   if (!G.goalShown && sched.todayCount() >= S.settings.goal) { G.goalShown = true; SFX.goal(); mode = 'shop'; showGoal(); updateHud(); return; }
   SFX.clear(); mode = 'shop'; showShop(); updateHud();
 }
@@ -227,11 +191,11 @@ function runSummary() {
   return `<p>Wave ${G.wave} · Score ${G.score} · best streak ${G.bestStreak}</p>
     <p>${G.answers} problems, ${acc}% right first try · ${G.practiced.size} facts practiced · ${fl} now fluent</p>`;
 }
-function finishRun() { S.meta.runs++; S.meta.best = Math.max(S.meta.best, G.score); save(); remoteSave(sessionRow()); }
+function finishRun() { S.meta.runs++; S.meta.best = Math.max(S.meta.best, G.score); save(); sync.save(sessionRow()); }
 function showGoal() {
   overlay(`<h2>MISSION COMPLETE</h2><p>Today's goal of ${S.settings.goal} problems is done.</p>${runSummary()}
     <div class="row"><button class="primary" id="ovDone">Done for today</button><button id="ovMore">Keep playing</button></div>`);
-  $('#ovDone').onclick = () => { finishRun(); showTitle(); };
+  $('#ovDone').onclick = () => { finishRun(); sync.flushNow(); location.href = '../'; };
   $('#ovMore').onclick = () => { SFX.key(); showShop(); };
 }
 function endRun() {
@@ -452,7 +416,7 @@ function showStats() {
   const hist = S.history.slice(-21); const mx = Math.max(1, ...hist.map(h => h.n));
   const streak = (() => { let n = 0; const d = new Date(); for (let i = 0; i < 90; i++) { const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     if (S.history.some(h => h.d === k && h.n > 0)) n++; else if (i > 0) break; d.setDate(d.getDate() - 1); } return n; })();
-  const syncLine = remote ? (remote.status === 'error' ? `<span class="leech">Sheet sync failed: ${esc(remote.lastError || '')}</span>` : `Synced with your Sheet${S.synced ? ' · last ' + new Date(S.synced).toLocaleString() : ''}`) : 'Progress is saved in this browser only (no Sheet configured).';
+  const syncLine = esc(sync.statusLine());
   panel(`<div class="row" style="justify-content:space-between"><h2>STATS</h2><button id="pClose">Close</button></div>
   <p class="muted">${syncLine}</p>
   <div class="tilerow">
@@ -490,7 +454,7 @@ function showStats() {
 function showSettings() {
   const s = S.settings;
   panel(`<div class="row" style="justify-content:space-between"><h2>SETTINGS</h2><button id="pClose">Close</button></div>
-  <p class="muted">Settings for ${cap(player)}${remote ? ', saved to the Sheet too so they follow to any device' : ''}.</p>
+  <p class="muted">Settings for ${cap(player)}${sync.remote ? ', saved to the Sheet too so they follow to any device' : ''}.</p>
   <h3>Fact families</h3>
   ${Object.keys(FAM).map(f => `<label class="opt"><input type="checkbox" id="fam_${f}" ${s.fams[f] ? 'checked' : ''}> <span class="fam-${f}">${FAM[f].name}</span> <span style="color:var(--phos-dim)">· ${ORDER.filter(id => ITEMS[id].fam === f).length} facts · fast under ${FAM[f].fast}s</span></label>`).join('')}
   <label class="opt" style="margin-top:8px">Layers <select id="setLayer">
@@ -509,7 +473,7 @@ function showSettings() {
   <div class="row" style="justify-content:flex-start"><button class="danger" id="pReset">Reset progress in this browser</button></div>`);
   $('#pClose').onclick = () => { Object.keys(FAM).forEach(f => s.fams[f] = $('#fam_' + f).checked); s.maxLayer = +$('#setLayer').value;
     s.newPerDay = Math.max(0, Math.min(60, parseInt($('#setNew').value, 10) || 0)); s.goal = Math.max(10, Math.min(300, parseInt($('#setGoal').value, 10) || 60)); s.numpad = $('#setPad').checked; s.sound = $('#setSnd').checked;
-    save(); remoteSettings(); applyNumpad(); hidePanel(); updateHud(); };
+    save(); sync.settings(); applyNumpad(); hidePanel(); updateHud(); };
   let armed = false; $('#pReset').onclick = () => { if (!armed) { armed = true; $('#pReset').textContent = 'Click again to erase everything in this browser'; return; }
     S = FF.store.defaultState(); save(); sched = new FF.Scheduler(FF.facts, S, { onChange: save }); hidePanel(); showTitle(); };
 }
@@ -562,8 +526,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && mod
 /* ---------- boot ---------- */
 function start() {
   loadColors(); applyNumpad(); $('#ver').textContent = 'v' + VERSION; showTitle(); requestAnimationFrame(loop);
-  if (CFG.endpoint) { remote = new SheetStore(Object.assign({}, CFG, { player })); remoteLoad(); } else setSync('', 'LOCAL', 'Progress is saved in this browser');
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  sync.load();
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('../sw.js').catch(() => {});
 }
 start();
 })();
