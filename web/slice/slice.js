@@ -4,7 +4,7 @@
  * shows which mistakes slip past. */
 (function () {
 'use strict';
-const VERSION = '1.1.0', GAME = 'slice';
+const VERSION = '1.2.0', GAME = 'slice';
 const ROUND = 60, STRIKES = 3, FAST_MUL = 1.4;
 const $ = s => document.querySelector(s);
 let W = 800, H = 600, U = 1; // logical size follows the viewport; U scales sizes and physics
@@ -96,78 +96,121 @@ let GRAV = 900;
 let G = null, mode = 'title', lastT = 0, effects = [], trail = [], shake = 0, banner = null, lastSliceAt = -1e9;
 let pointer = { down: false, x: 0, y: 0 };
 
+/* Two ways to play.
+ *   pick  — a problem is pinned at the top; a volley of fruit carries candidate answers; slice the right number.
+ *   catch — each fruit carries a whole equation; slice it only if it is wrong. Harder to read, so it runs slower.
+ * Fruit fly on a gentler gravity than the juice and halves, so there is time to read. */
+const variant = () => (S.settings.sliceMode === 'catch' ? 'catch' : 'pick');
+const FRUIT_G = () => GRAV * (variant() === 'pick' ? .42 : .38);
 function newRound() {
-  G = { t: 0, left: ROUND, score: 0, strikes: 0, combo: 0, bestCombo: 0, fruits: [], halves: [], spawnT: .6, frenzy: 0, frenzyUsed: 0,
-    answers: 0, correct: 0, caught: 0, falseAlarms: 0, escapedFalse: 0, practiced: new Set(), startedAt: Date.now(), lastTick: 0,
-    goalShown: sched.todayCount() >= S.settings.goal, goalToast: false };
+  G = { t: 0, left: ROUND, score: 0, strikes: 0, combo: 0, bestCombo: 0, fruits: [], halves: [], spawnT: .8, frenzy: 0, frenzyUsed: 0,
+    answers: 0, correct: 0, caught: 0, falseAlarms: 0, escapedFalse: 0, missed: 0, practiced: new Set(), startedAt: Date.now(), lastTick: 0,
+    q: null, gap: .6, goalShown: sched.todayCount() >= S.settings.goal, goalToast: false };
   sched.newSession(); effects = []; trail = []; banner = null; shake = 0;
 }
 function startRound() { newRound(); mode = 'play'; overlayHide(); updateHud(); }
 function floatText(x, y, text, color, life, big) { effects.push({ k: 'text', x, y, text, color, life, t: 0, big: !!big }); }
 function showBanner(text, color, life, big) { banner = { text, color, life, t: 0, big: !!big }; }
-
-function spawn(forceFalse) {
+function launch(x, apexFrac, payload) {
+  const kind = pick(FRUIT), r = kind.r * (variant() === 'pick' ? Math.min(1.6, W / 560) : 1.9) * U, g = FRUIT_G();
+  const apexY = H * apexFrac, vy = -Math.sqrt(2 * g * (H + r - apexY));
+  const vx = ((W / 2 - x) / W) * W * .06 + (Math.random() - .5) * W * .03;
+  G.fruits.push(Object.assign({ kind, r, x, y: H + r, vx, vy, g, rot: Math.random() * Math.PI * 2, vr: (Math.random() - .5) * 1.6, born: G.t, dead: false }, payload));
+}
+/* ---- pick mode ---- */
+function newQuestion() {
+  const id = sched.next([], []); if (!id) return;
+  const it = ITEMS[id], opts = [{ value: it.answer, isAnswer: true, tag: null }], seen = new Set([it.answer]);
+  for (let k = 0; k < 12 && opts.length < (G.t < 20 ? 3 : 4); k++) { const f = falseAnswer(it); if (!seen.has(f.value)) { seen.add(f.value); opts.push({ value: f.value, isAnswer: false, tag: f.tag }); } }
+  for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+  G.q = { id, item: it, shownAt: G.t, done: false, graded: false, doneAt: 0 };
+  const n = opts.length;
+  opts.forEach((o, i) => setTimeout(() => { if (G && G.q && G.q.id === id && mode === 'play') launch(W * (i + 1) / (n + 1), .36 + Math.random() * .12, { id, item: it, qid: G.q, value: o.value, isAnswer: o.isAnswer, tag: o.tag, text: fmt(o.value) }); }, i * 220));
+}
+function resolve(q) { if (!q || q.done) return; q.done = true; q.doneAt = G.t; for (const f of G.fruits) if (f.qid === q) f.spent = true; }
+function pickSlice(f) {
+  const q = f.qid; if (f.spent || !q || q.done) return; // leftovers from a settled question are just fruit
+  const rt = G.t - q.shownAt;
+  if (f.isAnswer) {
+    if (!q.graded) { q.graded = true; sched.report(q.id, true, rt, { kind: 'verify', fastMul: FAST_MUL * 1.3 }); G.answers++; G.correct++; G.practiced.add(q.id); }
+    G.caught++; G.combo++; G.bestCombo = Math.max(G.bestCombo, G.combo);
+    const fast = rt < FAM[q.item.fam].fast * 1.8, pts = 10 + (fast ? 5 : 0) + Math.min(G.combo - 1, 10) * 2; G.score += pts;
+    floatText(f.x, f.y - f.r - 10, '+' + pts + (fast ? '  fast!' : ''), COL.gold, 1, G.combo >= 3);
+    SFX.splat(); if (G.combo >= 3) SFX.combo(G.combo);
+    resolve(q); checkGoal();
+  } else {
+    if (!q.graded) { q.graded = true; sched.report(q.id, false, rt, { kind: 'verify', error: f.tag }); G.answers++; G.practiced.add(q.id); }
+    G.falseAlarms++; G.combo = 0; G.strikes++; shake = .5; SFX.strike();
+    showBanner(q.item.prompt + ' = ' + fmt(q.item.answer) + '   (not ' + f.text + ')', COL.red, 2.6, true);
+    resolve(q); updateHud(); if (G.strikes >= STRIKES) endRound('strikes');
+  }
+}
+function pickEscaped(f) {
+  const q = f.qid; if (!f.isAnswer || f.spent || !q || q.done) return;
+  if (!q.graded) { q.graded = true; sched.report(q.id, false, G.t - q.shownAt, { kind: 'verify', error: 'too_slow' }); G.answers++; G.practiced.add(q.id); }
+  G.missed++; G.combo = 0; SFX.miss();
+  showBanner(q.item.prompt + ' = ' + fmt(q.item.answer), COL.gold, 2.4, true);
+  resolve(q);
+}
+/* ---- catch mode ---- */
+function spawn() {
   const id = sched.next(G.fruits.map(f => f.id), []); if (!id) return;
   const it = ITEMS[id];
-  const isFalse = forceFalse || Math.random() < .55;
+  const isFalse = Math.random() < .55;
   let shown = it.answer, tag = null;
   if (isFalse) { const f = falseAnswer(it); shown = f.value; tag = f.tag; }
-  const kind = pick(FRUIT), r = kind.r * 1.9 * U;
-  const x = W * .15 + Math.random() * W * .7;
-  const apexY = H * (.18 + Math.random() * .22); // how high it flies
-  const vy = -Math.sqrt(2 * GRAV * (H + r - apexY));
-  const vx = ((W / 2 - x) / W) * W * .25 + (Math.random() - .5) * W * .08;
-  G.fruits.push({ id, item: it, text: it.prompt + ' = ' + fmt(shown), isFalse, tag, kind, r, x, y: H + r, vx, vy, rot: Math.random() * Math.PI * 2, vr: (Math.random() - .5) * 2.5, born: G.t, dead: false });
+  launch(W * .2 + Math.random() * W * .6, .32 + Math.random() * .14, { id, item: it, text: it.prompt + ' = ' + fmt(shown), isFalse, tag });
 }
-function sliceFruit(f, ang) {
-  f.dead = true; lastSliceAt = G.t;
+function catchSlice(f) {
   const rt = G.t - f.born;
-  // halves
-  for (const side of [-1, 1]) G.halves.push({ f, side, ang, x: f.x, y: f.y, vx: f.vx * .4 + Math.cos(ang + Math.PI / 2) * side * 160 * U, vy: f.vy * .25 - 80 * U, rot: f.rot, vr: side * 3, t: 0 });
-  for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, v = (80 + Math.random() * 320) * U; effects.push({ k: 'juice', x: f.x, y: f.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 120 * U, color: f.kind.juice || f.kind.flesh, life: .8, t: 0, r: (2 + Math.random() * 5) * U }); }
-  effects.push({ k: 'splat', x: f.x, y: f.y, color: f.kind.juice || f.kind.flesh, life: 3, t: 0, r: f.r * 1.1, ang, seed: Math.random() * 10 });
-  effects.push({ k: 'flash', x: f.x, y: f.y, ang, life: .18, t: 0, r: f.r * 2.2 });
   if (f.isFalse) {
-    sched.report(f.id, true, rt, { kind: 'verify', fastMul: FAST_MUL }); G.answers++; G.correct++; G.caught++; G.practiced.add(f.id);
+    sched.report(f.id, true, rt, { kind: 'verify', fastMul: FAST_MUL * 1.5 }); G.answers++; G.correct++; G.caught++; G.practiced.add(f.id);
     G.combo++; G.bestCombo = Math.max(G.bestCombo, G.combo);
-    const pts = 10 + Math.min(G.combo - 1, 10) * 2 + (G.frenzy > 0 ? 5 : 0); G.score += pts;
+    const pts = 10 + Math.min(G.combo - 1, 10) * 2; G.score += pts;
     floatText(f.x, f.y - f.r - 10, '+' + pts, COL.gold, .9, G.combo >= 3);
     SFX.splat(); if (G.combo >= 3) SFX.combo(G.combo);
-    if (G.combo === 10 && !G.frenzy) { G.frenzy = 6; G.frenzyUsed++; SFX.frenzy(); showBanner('FRENZY! Everything is false', COL.gold, 2.5, true); }
     checkGoal();
   } else {
     sched.report(f.id, false, rt, { kind: 'verify', error: 'false_alarm' }); G.answers++; G.falseAlarms++; G.practiced.add(f.id);
     G.combo = 0; G.strikes++; shake = .5; SFX.strike();
-    showBanner('That one was true:  ' + f.text, COL.red, 2.2, true);
+    showBanner('That one was right:  ' + f.text, COL.red, 2.4, true);
     updateHud(); if (G.strikes >= STRIKES) endRound('strikes');
   }
 }
-function escaped(f) {
+function catchEscaped(f) {
   const flight = G.t - f.born;
   if (f.isFalse) {
     sched.report(f.id, false, flight, { kind: 'verify', error: 'missed_' + f.tag }); G.answers++; G.escapedFalse++; G.practiced.add(f.id);
     G.combo = 0; SFX.miss();
-    showBanner('GOT AWAY · ' + f.text + '  (it’s ' + fmt(f.item.answer) + ')', COL.warn, 2.2);
-  } else if (G.t - lastSliceAt < 5) { // leaving a true one alone counts, but only while the player is clearly engaged
-    sched.report(f.id, true, flight, { kind: 'verify', fastMul: FAST_MUL }); G.answers++; G.correct++; G.practiced.add(f.id);
-    checkGoal();
-  }
+    showBanner('Got away:  ' + f.text + '   (it’s ' + fmt(f.item.answer) + ')', COL.gold, 2.4);
+  } else if (G.t - lastSliceAt < 6) { sched.report(f.id, true, flight, { kind: 'verify', fastMul: FAST_MUL * 1.5 }); G.answers++; G.correct++; G.practiced.add(f.id); checkGoal(); }
 }
+/* ---- shared ---- */
+function sliceFruit(f, ang) {
+  f.dead = true; lastSliceAt = G.t;
+  for (const side of [-1, 1]) G.halves.push({ f, side, ang, x: f.x, y: f.y, vx: f.vx * .4 + Math.cos(ang + Math.PI / 2) * side * 160 * U, vy: f.vy * .25 - 80 * U, rot: f.rot, vr: side * 3, t: 0 });
+  for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, v = (80 + Math.random() * 320) * U; effects.push({ k: 'juice', x: f.x, y: f.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 120 * U, color: f.kind.juice || f.kind.flesh, life: .8, t: 0, r: (2 + Math.random() * 5) * U }); }
+  effects.push({ k: 'splat', x: f.x, y: f.y, color: f.kind.juice || f.kind.flesh, life: 3, t: 0, r: f.r * 1.1, ang, seed: Math.random() * 10 });
+  effects.push({ k: 'flash', x: f.x, y: f.y, ang, life: .18, t: 0, r: f.r * 2.2 });
+  if (f.qid !== undefined) pickSlice(f); else catchSlice(f);
+}
+function escaped(f) { if (f.qid !== undefined) pickEscaped(f); else catchEscaped(f); }
 function checkGoal() { if (!G.goalToast && !G.goalShown && sched.todayCount() >= S.settings.goal) { G.goalToast = true; SFX.goal(); showBanner("Today's goal reached!", COL.gold, 2.6, true); } }
-function sessionRow() { return { ts: new Date().toISOString(), game: GAME, version: VERSION, wave: G.frenzyUsed, score: G.score, answers: G.answers, correct: G.correct, facts: G.practiced.size, bestStreak: G.bestCombo, seconds: Math.round((Date.now() - G.startedAt) / 1000) }; }
+function sessionRow() { return { ts: new Date().toISOString(), game: GAME + '-' + variant(), version: VERSION, wave: 0, score: G.score, answers: G.answers, correct: G.correct, facts: G.practiced.size, bestStreak: G.bestCombo, seconds: Math.round((Date.now() - G.startedAt) / 1000) }; }
 function endRound(why) {
   mode = 'over'; S.meta.sliceRuns = (S.meta.sliceRuns || 0) + 1; S.meta.sliceBest = Math.max(S.meta.sliceBest || 0, G.score); save(); sync.save(sessionRow()); SFX.end();
   const n = sched.todayCount(), g = S.settings.goal, acc = G.answers ? Math.round(100 * G.correct / G.answers) : 0;
   const goalNow = !G.goalShown && n >= g; if (goalNow) G.goalShown = true;
   const title = goalNow ? 'Goal reached!' : why === 'strikes' ? 'Three strikes!' : why === 'quit' ? 'Round over' : "Time's up!";
+  const pickMode = variant() === 'pick';
   overlay(`<h1>${title}</h1>
-    <div class="bigstats"><div><b>${G.score}</b><span>score</span></div><div><b>${G.caught}</b><span>caught</span></div><div><b>${G.bestCombo}</b><span>best combo</span></div></div>
-    <p>${G.escapedFalse} got away · ${G.falseAlarms} true one${G.falseAlarms === 1 ? '' : 's'} sliced · ${acc}% right${G.frenzyUsed ? ' · ' + G.frenzyUsed + ' frenzy' : ''}</p>
+    <div class="bigstats"><div><b>${G.score}</b><span>score</span></div><div><b>${G.caught}</b><span>${pickMode ? 'right' : 'caught'}</span></div><div><b>${G.bestCombo}</b><span>best combo</span></div></div>
+    <p>${pickMode ? `${G.falseAlarms} wrong slice${G.falseAlarms === 1 ? '' : 's'} · ${G.missed} missed` : `${G.escapedFalse} got away · ${G.falseAlarms} right one${G.falseAlarms === 1 ? '' : 's'} sliced`} · ${acc}% right</p>
     <p class="small">${G.score > 0 && G.score >= (S.meta.sliceBest || 0) ? 'New best! · ' : 'Best ' + (S.meta.sliceBest || 0) + ' · '}${n >= g ? `today's goal done (${n})` : `today ${n} of ${g}`}</p>
-    <div class="row">${goalNow ? '<button class="btn" id="ovDone">Done for today</button><button class="btn ghost" id="ovAgain">One more</button>' : '<button class="btn" id="ovAgain">Play again</button><button class="btn ghost" id="ovStats">Stats</button>'}</div>`);
+    <div class="row">${goalNow ? '<button class="btn" id="ovDone">Done for today</button><button class="btn ghost" id="ovAgain">One more</button>' : '<button class="btn" id="ovAgain">Play again</button><button class="btn ghost" id="ovMenu">Menu</button>'}</div>`);
   const a = $('#ovAgain'); if (a) a.onclick = () => { audio(); startRound(); };
   const d = $('#ovDone'); if (d) d.onclick = () => { sync.flushNow(); location.href = '../'; };
-  const st = $('#ovStats'); if (st) st.onclick = showStats;
+  const m = $('#ovMenu'); if (m) m.onclick = showTitle;
   updateHud();
 }
 
@@ -176,17 +219,16 @@ function update(dt) {
   if (mode !== 'play') return;
   G.t += dt; G.left = Math.max(0, ROUND - G.t);
   if (G.left <= 5 && Math.floor(G.left) !== G.lastTick) { G.lastTick = Math.floor(G.left); SFX.tick(); }
-  if (G.left <= 0) { for (const f of G.fruits) if (!f.dead) escaped(f); G.fruits = []; endRound('time'); return; }
-  if (G.frenzy > 0) G.frenzy = Math.max(0, G.frenzy - dt);
-  // spawning: ramps from one at a time to small bursts
-  G.spawnT -= dt;
-  const maxOn = G.frenzy ? 6 : G.t < 15 ? 2 : G.t < 35 ? 3 : 4;
-  if (G.spawnT <= 0 && G.fruits.length < maxOn) {
-    const burst = G.frenzy ? 2 : (G.t > 25 && Math.random() < .35 ? 2 : 1);
-    for (let i = 0; i < burst && G.fruits.length < maxOn; i++) spawn(G.frenzy > 0);
-    G.spawnT = G.frenzy ? .45 : Math.max(.7, 1.6 - G.t * .015) + Math.random() * .3;
+  if (G.left <= 0) { G.fruits = []; endRound('time'); return; }
+  if (variant() === 'pick') {
+    const live = G.fruits.some(f => !f.spent);
+    if (!G.q || (G.q.done && (!live || G.t - G.q.doneAt > 1.4))) { G.gap -= dt; if (G.gap <= 0) { newQuestion(); G.gap = .5; } }
+  } else {
+    G.spawnT -= dt;
+    const maxOn = G.t < 20 ? 1 : G.t < 40 ? 2 : 3;
+    if (G.spawnT <= 0 && G.fruits.length < maxOn) { spawn(); G.spawnT = Math.max(1.6, 2.6 - G.t * .015); }
   }
-  for (const f of G.fruits) { f.vy += GRAV * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.rot += f.vr * dt; if (f.x < f.r || f.x > W - f.r) f.vx *= -1;
+  for (const f of G.fruits) { f.vy += f.g * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.rot += f.vr * dt; if (f.x < f.r || f.x > W - f.r) f.vx *= -1;
     if (f.vy > 0 && f.y > H + f.r + 10) { f.dead = true; escaped(f); } }
   G.fruits = G.fruits.filter(f => !f.dead);
   for (const h of G.halves) { h.vy += GRAV * dt; h.x += h.vx * dt; h.y += h.vy * dt; h.rot += h.vr * dt; h.t += dt; }
@@ -255,12 +297,22 @@ function drawCut(k, r) { // the inside face of a half
   if (k.n === 'peach' || k.n === 'plum') { ctx.fillStyle = '#a0522d'; ctx.beginPath(); ctx.ellipse(0, 0, r * .3, r * .4, 0, 0, Math.PI * 2); ctx.fill(); }
 }
 function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
-function drawLabel(x, y, text) {
-  const fs = Math.round(Math.max(19, 24 * U)); ctx.font = '800 ' + fs + 'px ' + FONT(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+function drawLabel(x, y, text, big, faded) {
+  const fs = Math.round(big ? Math.max(30, 40 * U) : Math.max(20, 25 * U)); ctx.globalAlpha = faded ? .35 : 1; ctx.font = '800 ' + fs + 'px ' + FONT(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const w = ctx.measureText(text).width + fs * .9, h = fs * 1.35;
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
   ctx.fillStyle = 'rgba(255,250,240,.96)'; roundRect(x - w / 2, y - h / 2, w, h, h / 2); ctx.fill(); ctx.restore();
-  ctx.fillStyle = '#1d2b2a'; ctx.fillText(text, x, y + fs * .06);
+  ctx.fillStyle = '#1d2b2a'; ctx.fillText(text, x, y + fs * .06); ctx.globalAlpha = 1;
+}
+function drawPinned() {
+  const pickMode = variant() === 'pick'; let text, sub;
+  if (pickMode) { if (!G.q) return; text = G.q.item.prompt + ' = ?'; sub = G.q.done ? '' : 'Slice the answer'; }
+  else { text = 'Slice it if it\u2019s WRONG'; sub = 'Leave the right ones alone'; }
+  const fs = Math.round(pickMode ? Math.max(34, 52 * U) : Math.max(24, 32 * U)); ctx.font = '800 ' + fs + 'px ' + FONT(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const w = ctx.measureText(text).width + fs * 1.2, h = fs * 1.5, y = Math.max(110, H * .13);
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 6; ctx.fillStyle = 'rgba(255,250,240,.97)'; roundRect(W / 2 - w / 2, y, w, h, h * .35); ctx.fill(); ctx.restore();
+  ctx.fillStyle = pickMode && G.q && G.q.done ? '#7a8a87' : '#1d2b2a'; ctx.fillText(text, W / 2, y + h / 2 + fs * .06);
+  if (sub) { ctx.font = '700 ' + Math.round(fs * .42) + 'px ' + FONT(); ctx.fillStyle = COL.soft; ctx.fillText(sub, W / 2, y + h + fs * .45); }
 }
 function draw() {
   ctx.save();
@@ -275,7 +327,8 @@ function draw() {
       ctx.beginPath(); ctx.rect(-r * 1.5, h.side < 0 ? -r * 1.5 : 0, r * 3, r * 1.5); ctx.clip(); ctx.rotate(h.rot * .3); drawWhole(h.f.kind, r); ctx.rotate(-h.rot * .3);
       ctx.scale(1, .28); drawCut(h.f.kind, r); ctx.restore(); }
     for (const f of G.fruits) { ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot); drawWhole(f.kind, f.r); ctx.restore(); }
-    for (const f of G.fruits) drawLabel(f.x, f.y + f.r * .62, f.text);
+    for (const f of G.fruits) { if (f.qid !== undefined) drawLabel(f.x, f.y, f.text, true, f.spent); else drawLabel(f.x, f.y + f.r * .62, f.text, false, false); }
+    drawPinned();
   }
   for (const f of effects) {
     const p = f.t / f.life;
@@ -322,15 +375,18 @@ function playersRow() { return PLAYERS.length > 1 ? `<div class="players">${PLAY
 function wirePlayers() { $('#overlay').querySelectorAll('.players button').forEach(b => b.onclick = () => { if (b.dataset.p === player) return; sync.flushNow(); FF.player.set(b.dataset.p); location.reload(); }); }
 function showTitle() {
   mode = 'title'; G = null;
-  const todayN = sched.todayCount();
+  const todayN = sched.todayCount(), v = variant();
   overlay(`<h1>Slice of <em>Truth</em></h1>
-    <p>Fruit flies up carrying equations. Slice the ones that are <b>wrong</b>.</p>
-    <div class="how"><div class="yes">Slice it<code>7 × 8 = 54</code></div><div class="no">Leave it<code>7 × 8 = 56</code></div></div>
-    <p class="small">60 seconds · cutting a true one is a strike · three strikes and you're out<br>Drag to slice, or tap/click a fruit</p>
+    <div class="modes">
+      <button data-m="pick" class="${v === 'pick' ? 'on' : ''}"><b>Pick the answer</b><span>A problem at the top. Slice the fruit with the right number.</span><code>8 × 7 = ?&nbsp;&nbsp;→&nbsp;&nbsp;<u>56</u>&nbsp; 54&nbsp; 63</code></button>
+      <button data-m="catch" class="${v === 'catch' ? 'on' : ''}"><b>Catch the mistakes</b><span>Each fruit has an equation. Slice only the wrong ones.</span><code><u>7 × 8 = 54</u>&nbsp;&nbsp;·&nbsp;&nbsp;7 × 8 = 56</code></button>
+    </div>
+    <p class="small">60 seconds · a wrong slice is a strike · three strikes and you're out<br>Drag to slice, or tap/click a fruit</p>
     ${playersRow()}
     <div class="row"><button class="btn" id="ovStart">Play</button></div>
     <p class="small">${todayN >= S.settings.goal ? `Today's goal done ✓ (${todayN}). Extra rounds still count.` : `Today: ${todayN} of ${S.settings.goal}`}</p>`);
   $('#ovStart').onclick = () => { audio(); startRound(); }; wirePlayers();
+  $('#overlay').querySelectorAll('.modes button').forEach(b => b.onclick = () => { S.settings.sliceMode = b.dataset.m; save(); showTitle(); });
   updateHud();
 }
 function togglePause() {

@@ -65,6 +65,13 @@ canvas#slice{position:fixed;inset:0;width:100vw;height:100dvh;touch-action:none;
 .card p{margin:0;font-size:19px;line-height:1.35;color:var(--ink-soft);max-width:40ch;font-weight:600}
 .card p b{color:var(--ink)}
 .card .small{font-size:15px;color:var(--ink-dim)}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.modes button{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:var(--ink-soft);border-radius:18px;padding:12px 10px;cursor:pointer;font-weight:600;font-size:15px;line-height:1.25}
+.modes button b{font-size:20px;color:var(--ink);font-weight:800}
+.modes button code{font-family:inherit;font-weight:800;font-size:16px;color:var(--ink);margin-top:4px}
+.modes button code u{text-decoration:none;background:var(--gold);color:#3a2500;border-radius:8px;padding:0 6px}
+.modes button.on{border-color:var(--gold);background:rgba(255,200,61,.12);box-shadow:0 0 0 3px rgba(255,200,61,.2)}
+@media (max-width:520px){.modes{grid-template-columns:1fr}}
 .how{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin:4px 0}
 .how div{border-radius:16px;padding:10px;font-size:16px;font-weight:700;line-height:1.2}
 .how .yes{background:rgba(94,240,168,.12);border:2px solid rgba(94,240,168,.45);color:var(--mint)}
