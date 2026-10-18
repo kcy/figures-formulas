@@ -18,8 +18,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Stamp the service-worker cache with this commit
-        run: sed -i "s/__BUILD__/${GITHUB_SHA::8}/" web/sw.js
+      - name: Stamp this commit into the service worker and every asset URL
+        run: grep -rl "__BUILD__" web | xargs sed -i "s/__BUILD__/${GITHUB_SHA::8}/g"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
