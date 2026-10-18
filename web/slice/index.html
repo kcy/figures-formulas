@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Slice of Truth</title>
 <meta name="description" content="Equations fly up on fruit. Slice the false ones.">
-<meta name="theme-color" content="#06080a">
+<meta name="theme-color" content="#0b3d3a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Slice">
@@ -14,46 +14,121 @@
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
-<link rel="stylesheet" href="../css/theme.css">
-<style>html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap">
+<style>
+/* Layout: one full-screen canvas; HUD floats over the top edge; title/result cards and panels sit over the play field.
+   Single look by choice: a dusky orchard at evening, warm fruit against deep teal. */
+:root{
+  --sky-top:#0b3d3a; --sky-bot:#06201f; --glow:#1f6f5c;
+  --ink:#fffaf0; --ink-soft:#cfe8df; --ink-dim:#8fb8ad;
+  --gold:#ffc83d; --gold-deep:#e89a00; --red:#ff4d5e; --mint:#5ef0a8;
+  --card:#0d2f2c; --card-edge:#2b6b5e;
+  --font:'Baloo 2',ui-rounded,'SF Pro Rounded',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--sky-bot);color:var(--ink);font-family:var(--font);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+canvas#slice{position:fixed;inset:0;width:100vw;height:100dvh;touch-action:none;cursor:crosshair;display:block}
+
+/* HUD */
+.hud{position:fixed;left:0;right:0;top:0;z-index:5;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+.hud > *{pointer-events:auto}
+.scorebox{display:flex;flex-direction:column;line-height:.9}
+.score{font-size:clamp(40px,7vw,64px);font-weight:800;color:var(--gold);text-shadow:0 3px 0 var(--gold-deep),0 6px 18px rgba(0,0,0,.45);font-variant-numeric:tabular-nums}
+.best{font-size:16px;font-weight:700;color:var(--ink-soft);margin-top:6px}
+.center{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;align-items:center;gap:6px}
+.timer{--p:1;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--mint) calc(var(--p)*360deg),rgba(255,255,255,.12) 0);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.timer.low{background:conic-gradient(var(--red) calc(var(--p)*360deg),rgba(255,255,255,.12) 0)}
+.timer span{width:52px;height:52px;border-radius:50%;background:var(--sky-top);display:grid;place-items:center;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.combo{font-size:22px;font-weight:800;color:var(--gold);min-height:26px;text-shadow:0 2px 0 var(--gold-deep)}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.strikes{display:flex;gap:6px}
+.strikes i{width:30px;height:30px;display:grid;place-items:center;font-style:normal;font-size:24px;font-weight:800;color:rgba(255,255,255,.25)}
+.strikes i.on{color:var(--red);text-shadow:0 0 12px rgba(255,77,94,.7)}
+.meta{display:flex;gap:10px;align-items:center;font-size:15px;font-weight:700;color:var(--ink-soft)}
+.sync{font-size:13px;letter-spacing:.5px;color:var(--ink-dim)} .sync.ok{color:var(--mint)} .sync.err{color:#ffa94d} .sync.busy{color:var(--gold)}
+.tools{display:flex;gap:6px}
+.icon{width:40px;height:40px;border-radius:12px;border:0;background:rgba(255,255,255,.12);color:var(--ink);font:inherit;font-size:18px;font-weight:800;cursor:pointer;display:grid;place-items:center;text-decoration:none}
+.icon:hover{background:rgba(255,255,255,.2)}
+.icon:focus-visible,button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* Cards (title, results) */
+.overlay{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));background:radial-gradient(ellipse at center,rgba(6,32,31,.55),rgba(6,32,31,.85))}
+.card{width:min(520px,100%);background:linear-gradient(180deg,#134440,var(--card));border:2px solid var(--card-edge);border-radius:28px;padding:28px 26px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);display:flex;flex-direction:column;gap:12px;align-items:center}
+.card h1{margin:0;font-size:clamp(40px,8vw,60px);line-height:.95;font-weight:800;color:var(--gold);text-shadow:0 4px 0 var(--gold-deep),0 10px 24px rgba(0,0,0,.4);text-wrap:balance}
+.card h1 em{font-style:normal;color:var(--ink)}
+.card p{margin:0;font-size:19px;line-height:1.35;color:var(--ink-soft);max-width:40ch;font-weight:600}
+.card p b{color:var(--ink)}
+.card .small{font-size:15px;color:var(--ink-dim)}
+.how{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin:4px 0}
+.how div{border-radius:16px;padding:10px;font-size:16px;font-weight:700;line-height:1.2}
+.how .yes{background:rgba(94,240,168,.12);border:2px solid rgba(94,240,168,.45);color:var(--mint)}
+.how .no{background:rgba(255,77,94,.1);border:2px solid rgba(255,77,94,.4);color:#ff8b96}
+.how code{display:block;font-family:inherit;font-size:20px;color:var(--ink);margin-top:2px}
+.bigstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.bigstats div{background:rgba(255,255,255,.06);border-radius:16px;padding:10px 6px}
+.bigstats b{display:block;font-size:30px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.bigstats span{font-size:14px;color:var(--ink-dim);font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+button{font:inherit}
+.btn{border:0;border-radius:999px;padding:12px 26px;font-size:22px;font-weight:800;cursor:pointer;color:#3a2500;background:linear-gradient(180deg,#ffd866,var(--gold));box-shadow:0 5px 0 var(--gold-deep),0 10px 20px rgba(0,0,0,.35);transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--gold-deep)}
+.btn.ghost{background:rgba(255,255,255,.12);color:var(--ink);box-shadow:none}
+.players{display:flex;gap:8px;justify-content:center}
+.players button{border:2px solid rgba(255,255,255,.2);background:transparent;color:var(--ink-soft);border-radius:999px;padding:4px 14px;font-size:16px;font-weight:700;cursor:pointer}
+.players button.on{background:var(--ink);color:var(--sky-top);border-color:var(--ink)}
+
+/* Panels (stats, settings) */
+.panel{position:fixed;inset:0;z-index:20;overflow:auto;background:rgba(6,32,31,.97);padding:calc(env(safe-area-inset-top,0px) + 16px) max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.panel-in{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{margin:0;font-size:34px;font-weight:800;color:var(--gold)}
+.panel h3{margin:10px 0 0;font-size:20px;font-weight:800;color:var(--ink)}
+.panel p{margin:0;color:var(--ink-soft);font-size:16px}
+.panel .muted{color:var(--ink-dim);font-size:15px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.tile{background:rgba(255,255,255,.06);border-radius:16px;padding:12px}
+.tile .k{font-size:14px;color:var(--ink-dim);font-weight:700}
+.tile .v{font-size:34px;font-weight:800;line-height:1;color:var(--ink)}
+.tile .s{font-size:14px;color:var(--ink-dim)}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:16px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.08)}
+th{color:var(--ink-dim);font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+td.num{text-align:right}
+label.opt{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600;color:var(--ink)}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
+input[type=number],select{font:inherit;font-size:16px;background:rgba(255,255,255,.08);color:var(--ink);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:4px 8px}
+input[type=number]{width:80px}
+@media (max-width:520px){.timer{width:54px;height:54px}.timer span{width:44px;height:44px;font-size:20px}.meta .goal{display:none}.icon{width:36px;height:36px}}
+</style>
 </head>
 <body>
-<div class="console">
-  <header class="hud">
-    <div class="brand"><a href="../" class="home" title="Back to the hub">◀</a> SLICE OF TRUTH <span class="ver" id="ver">v1</span></div>
-    <div class="hud-stats">
-      <span id="hudTime">TIME 60</span>
-      <span id="hudScore">SCORE 0</span>
-      <span id="hudStrikes" class="hp">STRIKES ○○○</span>
-      <span id="hudCombo" class="combo"></span>
-      <span id="hudGoal">TODAY 0/60</span>
-      <span id="hudSync" class="sync">LOCAL</span>
-    </div>
-  </header>
+<canvas id="slice" aria-label="Fruit carrying equations fly up; slice the false ones"></canvas>
 
-  <div class="bezel">
-    <div class="screenwrap">
-      <canvas id="slice" width="560" height="420" aria-label="Game screen: fruit carrying equations fly up; slice the false ones"></canvas>
-      <div class="scan"></div>
-      <div id="overlay" class="overlay"></div>
+<header class="hud">
+  <div class="scorebox"><div class="score" id="hudScore">0</div><div class="best" id="hudBest">Best 0</div></div>
+  <div class="center"><div class="timer" id="hudTimer"><span id="hudTime">60</span></div><div class="combo" id="hudCombo"></div></div>
+  <div class="right">
+    <div class="tools">
+      <a class="icon" href="../" title="Back to games" aria-label="Back to games">⌂</a>
+      <button class="icon" id="btnPause" title="Pause" aria-label="Pause">❚❚</button>
+      <button class="icon" id="btnStats" title="Stats" aria-label="Stats">▤</button>
+      <button class="icon" id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
+      <button class="icon" id="btnSound" title="Sound" aria-label="Sound">♪</button>
     </div>
+    <div class="strikes" id="hudStrikes" aria-label="Strikes"><i>✕</i><i>✕</i><i>✕</i></div>
+    <div class="meta"><span class="goal" id="hudGoal">Today 0/60</span><span class="sync" id="hudSync">LOCAL</span></div>
   </div>
+</header>
 
-  <div class="controls">
-    <div class="grp">
-      <button id="btnStart" class="primary">Start round</button>
-      <button id="btnStats">Stats</button>
-      <button id="btnSettings">Settings</button>
-    </div>
-    <div class="grp">
-      <button id="btnSound">Sound: on</button>
-    </div>
-  </div>
-  <p class="help">Each fruit carries an equation. <b>Slice the false ones</b> by dragging across them, or just click them. Leave true ones alone: slicing a true equation is a strike, and three strikes end the round. Letting a false one get away costs no strike, but it breaks your combo. <kbd>Esc</kbd> pauses.</p>
-</div>
-
+<div id="overlay" class="overlay"></div>
 <div id="panel" class="panel" hidden><div class="panel-in" id="panelIn"></div></div>
+<span id="ver" hidden></span>
 
 <script src="../config.js"></script>
 <script src="../js/facts.js"></script>
