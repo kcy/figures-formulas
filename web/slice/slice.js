@@ -4,7 +4,7 @@
  * shows which mistakes slip past. */
 (function () {
 'use strict';
-const VERSION = '1.2.0', GAME = 'slice';
+const VERSION = '1.3.0', GAME = 'slice';
 const ROUND = 60, STRIKES = 3, FAST_MUL = 1.4;
 const $ = s => document.querySelector(s);
 let W = 800, H = 600, U = 1; // logical size follows the viewport; U scales sizes and physics
@@ -105,7 +105,7 @@ const FRUIT_G = () => GRAV * (variant() === 'pick' ? .42 : .38);
 function newRound() {
   G = { t: 0, left: ROUND, score: 0, strikes: 0, combo: 0, bestCombo: 0, fruits: [], halves: [], spawnT: .8, frenzy: 0, frenzyUsed: 0,
     answers: 0, correct: 0, caught: 0, falseAlarms: 0, escapedFalse: 0, missed: 0, practiced: new Set(), startedAt: Date.now(), lastTick: 0,
-    q: null, gap: .6, goalShown: sched.todayCount() >= S.settings.goal, goalToast: false };
+    q: null, gap: .6, pending: [], goalShown: sched.todayCount() >= S.settings.goal, goalToast: false };
   sched.newSession(); effects = []; trail = []; banner = null; shake = 0;
 }
 function startRound() { newRound(); mode = 'play'; overlayHide(); updateHud(); }
@@ -118,28 +118,36 @@ function launch(x, apexFrac, payload) {
   G.fruits.push(Object.assign({ kind, r, x, y: H + r, vx, vy, g, rot: Math.random() * Math.PI * 2, vr: (Math.random() - .5) * 1.6, born: G.t, dead: false }, payload));
 }
 /* ---- pick mode ---- */
+/* Think time: the question shows alone before the fruit launch. Adapts per player, saved with their state. */
+const DELAY_START = 1.5, DELAY_MIN = 0, DELAY_MAX = 2.5;
+const thinkDelay = () => (S.meta.sliceDelay == null ? DELAY_START : S.meta.sliceDelay);
+function adjustDelay(d) { S.meta.sliceDelay = Math.round(Math.max(DELAY_MIN, Math.min(DELAY_MAX, thinkDelay() + d)) * 100) / 100; }
 function newQuestion() {
   const id = sched.next([], []); if (!id) return;
   const it = ITEMS[id], opts = [{ value: it.answer, isAnswer: true, tag: null }], seen = new Set([it.answer]);
   for (let k = 0; k < 12 && opts.length < (G.t < 20 ? 3 : 4); k++) { const f = falseAnswer(it); if (!seen.has(f.value)) { seen.add(f.value); opts.push({ value: f.value, isAnswer: false, tag: f.tag }); } }
   for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
-  G.q = { id, item: it, shownAt: G.t, done: false, graded: false, doneAt: 0 };
+  const wait = thinkDelay();
+  G.q = { id, item: it, shownAt: G.t, done: false, graded: false, doneAt: 0, wait, launchAt: G.t + wait };
   const n = opts.length;
-  opts.forEach((o, i) => setTimeout(() => { if (G && G.q && G.q.id === id && mode === 'play') launch(W * (i + 1) / (n + 1), .36 + Math.random() * .12, { id, item: it, qid: G.q, value: o.value, isAnswer: o.isAnswer, tag: o.tag, text: fmt(o.value) }); }, i * 220));
+  const q = G.q; // launches run on the game clock, so pausing freezes them too
+  opts.forEach((o, i) => G.pending.push({ at: G.t + wait + i * .22, fire: () => launch(W * (i + 1) / (n + 1), .36 + Math.random() * .12, { id, item: it, qid: q, value: o.value, isAnswer: o.isAnswer, tag: o.tag, text: fmt(o.value) }) }));
 }
 function resolve(q) { if (!q || q.done) return; q.done = true; q.doneAt = G.t; for (const f of G.fruits) if (f.qid === q) f.spent = true; }
 function pickSlice(f) {
   const q = f.qid; if (f.spent || !q || q.done) return; // leftovers from a settled question are just fruit
-  const rt = G.t - q.shownAt;
+  const rt = G.t - q.launchAt;
   if (f.isAnswer) {
     if (!q.graded) { q.graded = true; sched.report(q.id, true, rt, { kind: 'verify', fastMul: FAST_MUL * 1.3 }); G.answers++; G.correct++; G.practiced.add(q.id); }
     G.caught++; G.combo++; G.bestCombo = Math.max(G.bestCombo, G.combo);
     const fast = rt < FAM[q.item.fam].fast * 1.8, pts = 10 + (fast ? 5 : 0) + Math.min(G.combo - 1, 10) * 2; G.score += pts;
+    if (!q.adjusted) { q.adjusted = true; adjustDelay(fast ? -.1 : -.03); }
     floatText(f.x, f.y - f.r - 10, '+' + pts + (fast ? '  fast!' : ''), COL.gold, 1, G.combo >= 3);
     SFX.splat(); if (G.combo >= 3) SFX.combo(G.combo);
     resolve(q); checkGoal();
   } else {
     if (!q.graded) { q.graded = true; sched.report(q.id, false, rt, { kind: 'verify', error: f.tag }); G.answers++; G.practiced.add(q.id); }
+    if (!q.adjusted) { q.adjusted = true; adjustDelay(.25); }
     G.falseAlarms++; G.combo = 0; G.strikes++; shake = .5; SFX.strike();
     showBanner(q.item.prompt + ' = ' + fmt(q.item.answer) + '   (not ' + f.text + ')', COL.red, 2.6, true);
     resolve(q); updateHud(); if (G.strikes >= STRIKES) endRound('strikes');
@@ -147,7 +155,8 @@ function pickSlice(f) {
 }
 function pickEscaped(f) {
   const q = f.qid; if (!f.isAnswer || f.spent || !q || q.done) return;
-  if (!q.graded) { q.graded = true; sched.report(q.id, false, G.t - q.shownAt, { kind: 'verify', error: 'too_slow' }); G.answers++; G.practiced.add(q.id); }
+  if (!q.graded) { q.graded = true; sched.report(q.id, false, G.t - q.launchAt, { kind: 'verify', error: 'too_slow' }); G.answers++; G.practiced.add(q.id); }
+  if (!q.adjusted) { q.adjusted = true; adjustDelay(.25); }
   G.missed++; G.combo = 0; SFX.miss();
   showBanner(q.item.prompt + ' = ' + fmt(q.item.answer), COL.gold, 2.4, true);
   resolve(q);
@@ -206,6 +215,7 @@ function endRound(why) {
   overlay(`<h1>${title}</h1>
     <div class="bigstats"><div><b>${G.score}</b><span>score</span></div><div><b>${G.caught}</b><span>${pickMode ? 'right' : 'caught'}</span></div><div><b>${G.bestCombo}</b><span>best combo</span></div></div>
     <p>${pickMode ? `${G.falseAlarms} wrong slice${G.falseAlarms === 1 ? '' : 's'} · ${G.missed} missed` : `${G.escapedFalse} got away · ${G.falseAlarms} right one${G.falseAlarms === 1 ? '' : 's'} sliced`} · ${acc}% right</p>
+    ${pickMode ? `<p class="small">Think time now ${thinkDelay().toFixed(1)} s${thinkDelay() <= .3 ? ' · lightning!' : ''}</p>` : ''}
     <p class="small">${G.score > 0 && G.score >= (S.meta.sliceBest || 0) ? 'New best! · ' : 'Best ' + (S.meta.sliceBest || 0) + ' · '}${n >= g ? `today's goal done (${n})` : `today ${n} of ${g}`}</p>
     <div class="row">${goalNow ? '<button class="btn" id="ovDone">Done for today</button><button class="btn ghost" id="ovAgain">One more</button>' : '<button class="btn" id="ovAgain">Play again</button><button class="btn ghost" id="ovMenu">Menu</button>'}</div>`);
   const a = $('#ovAgain'); if (a) a.onclick = () => { audio(); startRound(); };
@@ -221,7 +231,8 @@ function update(dt) {
   if (G.left <= 5 && Math.floor(G.left) !== G.lastTick) { G.lastTick = Math.floor(G.left); SFX.tick(); }
   if (G.left <= 0) { G.fruits = []; endRound('time'); return; }
   if (variant() === 'pick') {
-    const live = G.fruits.some(f => !f.spent);
+    for (const p of G.pending) if (p.at <= G.t) { p.fire(); p.done = true; } G.pending = G.pending.filter(p => !p.done);
+    const live = G.fruits.some(f => !f.spent) || G.pending.length > 0;
     if (!G.q || (G.q.done && (!live || G.t - G.q.doneAt > 1.4))) { G.gap -= dt; if (G.gap <= 0) { newQuestion(); G.gap = .5; } }
   } else {
     G.spawnT -= dt;
@@ -312,7 +323,11 @@ function drawPinned() {
   const w = ctx.measureText(text).width + fs * 1.2, h = fs * 1.5, y = Math.max(110, H * .13);
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 6; ctx.fillStyle = 'rgba(255,250,240,.97)'; roundRect(W / 2 - w / 2, y, w, h, h * .35); ctx.fill(); ctx.restore();
   ctx.fillStyle = pickMode && G.q && G.q.done ? '#7a8a87' : '#1d2b2a'; ctx.fillText(text, W / 2, y + h / 2 + fs * .06);
-  if (sub) { ctx.font = '700 ' + Math.round(fs * .42) + 'px ' + FONT(); ctx.fillStyle = COL.soft; ctx.fillText(sub, W / 2, y + h + fs * .45); }
+  const waiting = pickMode && G.q && !G.q.done && G.t < G.q.launchAt;
+  if (waiting) { const frac = (G.q.launchAt - G.t) / Math.max(.01, G.q.wait), bw = w * .7, by = y + h + fs * .32;
+    ctx.fillStyle = 'rgba(255,255,255,.15)'; roundRect(W / 2 - bw / 2, by, bw, 8, 4); ctx.fill(); ctx.fillStyle = COL.gold; roundRect(W / 2 - bw / 2, by, bw * frac, 8, 4); ctx.fill();
+    ctx.font = '700 ' + Math.round(fs * .42) + 'px ' + FONT(); ctx.fillStyle = COL.soft; ctx.fillText('Think…', W / 2, by + fs * .62); }
+  else if (sub) { ctx.font = '700 ' + Math.round(fs * .42) + 'px ' + FONT(); ctx.fillStyle = COL.soft; ctx.fillText(sub, W / 2, y + h + fs * .45); }
 }
 function draw() {
   ctx.save();
