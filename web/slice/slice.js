@@ -4,7 +4,7 @@
  * shows which mistakes slip past. */
 (function () {
 'use strict';
-const VERSION = '1.3.0', GAME = 'slice';
+const VERSION = '1.4.0', GAME = 'slice';
 const ROUND = 60, STRIKES = 3, FAST_MUL = 1.4;
 const $ = s => document.querySelector(s);
 let W = 800, H = 600, U = 1; // logical size follows the viewport; U scales sizes and physics
@@ -119,9 +119,9 @@ function launch(x, apexFrac, payload) {
 }
 /* ---- pick mode ---- */
 /* Think time: the question shows alone before the fruit launch. Adapts per player, saved with their state. */
-const DELAY_START = 1.5, DELAY_MIN = 0, DELAY_MAX = 2.5;
-const thinkDelay = () => (S.meta.sliceDelay == null ? DELAY_START : S.meta.sliceDelay);
-function adjustDelay(d) { S.meta.sliceDelay = Math.round(Math.max(DELAY_MIN, Math.min(DELAY_MAX, thinkDelay() + d)) * 100) / 100; }
+const DELAY_START = 3, DELAY_MIN = 0, DELAY_MAX = 4;
+const thinkDelay = () => (S.meta.thinkTime == null ? DELAY_START : S.meta.thinkTime);
+function adjustDelay(d) { S.meta.thinkTime = Math.round(Math.max(DELAY_MIN, Math.min(DELAY_MAX, thinkDelay() + d)) * 100) / 100; }
 function newQuestion() {
   const id = sched.next([], []); if (!id) return;
   const it = ITEMS[id], opts = [{ value: it.answer, isAnswer: true, tag: null }], seen = new Set([it.answer]);
