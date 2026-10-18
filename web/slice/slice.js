@@ -4,7 +4,7 @@
  * shows which mistakes slip past. */
 (function () {
 'use strict';
-const VERSION = '1.4.0', GAME = 'slice';
+const VERSION = '1.4.1', GAME = 'slice';
 const ROUND = 60, STRIKES = 3, FAST_MUL = 1.4;
 const $ = s => document.querySelector(s);
 let W = 800, H = 600, U = 1; // logical size follows the viewport; U scales sizes and physics
@@ -217,10 +217,9 @@ function endRound(why) {
     <p>${pickMode ? `${G.falseAlarms} wrong slice${G.falseAlarms === 1 ? '' : 's'} · ${G.missed} missed` : `${G.escapedFalse} got away · ${G.falseAlarms} right one${G.falseAlarms === 1 ? '' : 's'} sliced`} · ${acc}% right</p>
     ${pickMode ? `<p class="small">Think time now ${thinkDelay().toFixed(1)} s${thinkDelay() <= .3 ? ' · lightning!' : ''}</p>` : ''}
     <p class="small">${G.score > 0 && G.score >= (S.meta.sliceBest || 0) ? 'New best! · ' : 'Best ' + (S.meta.sliceBest || 0) + ' · '}${n >= g ? `today's goal done (${n})` : `today ${n} of ${g}`}</p>
-    <div class="row">${goalNow ? '<button class="btn" id="ovDone">Done for today</button><button class="btn ghost" id="ovAgain">One more</button>' : '<button class="btn" id="ovAgain">Play again</button><button class="btn ghost" id="ovMenu">Menu</button>'}</div>`);
+    <div class="row">${goalNow ? '<button class="btn" id="ovAgain">One more</button>' : '<button class="btn" id="ovAgain">Play again</button>'}<button class="btn ghost" id="ovDone">Games</button></div>`);
   const a = $('#ovAgain'); if (a) a.onclick = () => { audio(); startRound(); };
   const d = $('#ovDone'); if (d) d.onclick = () => { sync.flushNow(); location.href = '../'; };
-  const m = $('#ovMenu'); if (m) m.onclick = showTitle;
   updateHud();
 }
 
@@ -398,14 +397,14 @@ function showTitle() {
     </div>
     <p class="small">60 seconds · a wrong slice is a strike · three strikes and you're out<br>Drag to slice, or tap/click a fruit</p>
     ${playersRow()}
-    <div class="row"><button class="btn" id="ovStart">Play</button></div>
+    <div class="row"><button class="btn" id="ovStart">Play</button><a class="btn ghost" href="../" style="text-decoration:none">Games</a></div>
     <p class="small">${todayN >= S.settings.goal ? `Today's goal done ✓ (${todayN}). Extra rounds still count.` : `Today: ${todayN} of ${S.settings.goal}`}</p>`);
   $('#ovStart').onclick = () => { audio(); startRound(); }; wirePlayers();
   $('#overlay').querySelectorAll('.modes button').forEach(b => b.onclick = () => { S.settings.sliceMode = b.dataset.m; save(); showTitle(); });
   updateHud();
 }
 function togglePause() {
-  if (mode === 'play') { mode = 'pause'; overlay(`<h1>Paused</h1><div class="row"><button class="btn" id="ovRes">Resume</button><button class="btn ghost" id="ovQuit">End round</button></div>`);
+  if (mode === 'play') { mode = 'pause'; overlay(`<h1>Paused</h1><div class="row"><button class="btn" id="ovRes">Resume</button><button class="btn ghost" id="ovQuit">End round</button><a class="btn ghost" href="../" style="text-decoration:none">Games</a></div>`);
     $('#ovRes').onclick = togglePause; $('#ovQuit').onclick = () => { endRound('quit'); }; }
   else if (mode === 'pause') { mode = 'play'; overlayHide(); lastT = performance.now(); }
 }

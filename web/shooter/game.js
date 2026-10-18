@@ -1,7 +1,7 @@
 /* Figures & Formulas — the MasterType-style game. One of possibly several front ends to FF.Scheduler. */
 (function () {
 'use strict';
-const VERSION = '2.2.0';
+const VERSION = '2.2.1';
 const $ = s => document.querySelector(s);
 const W = 560, H = 420, CX = 280, CY = 210;
 const { FAM, ITEMS, ORDER, fmt, hash } = FF.facts;
@@ -194,7 +194,8 @@ function runSummary() {
 function finishRun() { S.meta.runs++; S.meta.best = Math.max(S.meta.best, G.score); save(); sync.save(sessionRow()); }
 function showGoal() {
   overlay(`<h2>MISSION COMPLETE</h2><p>Today's goal of ${S.settings.goal} problems is done.</p>${runSummary()}
-    <div class="row"><button class="primary" id="ovDone">Done for today</button><button id="ovMore">Keep playing</button></div>`);
+    <div class="row"><button class="primary" id="ovDone">Done for today</button><button id="ovMore">Keep playing</button></div>
+    <p class="muted">"Done" takes you back to the games.</p>`);
   $('#ovDone').onclick = () => { finishRun(); sync.flushNow(); location.href = '../'; };
   $('#ovMore').onclick = () => { SFX.key(); showShop(); };
 }
@@ -203,8 +204,8 @@ function endRun() {
   const n = sched.todayCount(), g = S.settings.goal;
   overlay(`<h2>SHIP LOST</h2>${runSummary()}
     <p class="muted">${n >= g ? `Today's goal done (${n}/${g}).` : `Today: ${n} of ${g} problems. ${g - n} to go.`} Best score ${S.meta.best} · best wave ${S.meta.bestWave}</p>
-    <div class="row"><button class="primary" id="ovStart">${n >= g ? 'Play again' : 'Launch again'}</button><button id="ovStats">Stats</button></div>`);
-  $('#ovStart').onclick = () => { newRun(); startWave(); }; $('#ovStats').onclick = showStats;
+    <div class="row"><button class="primary" id="ovStart">${n >= g ? 'Play again' : 'Launch again'}</button><button id="ovStats">Stats</button><button id="ovHome">Games</button></div>`);
+  $('#ovStart').onclick = () => { newRun(); startWave(); }; $('#ovStats').onclick = showStats; $('#ovHome').onclick = () => { sync.flushNow(); location.href = '../'; };
 }
 
 /* ---------- update ---------- */
@@ -375,8 +376,8 @@ function showTitle() {
     <p class="muted">${todayN >= S.settings.goal ? `Today's goal done ✓ (${todayN}). Extra practice still counts.` : `Today's goal: ${S.settings.goal} problems · ${todayN} done`}</p>
     <p class="muted">${known ? `${known} facts in rotation · ${fl} fluent · ${sched.dueCount()} due now` : 'First run: new facts come in a few at a time.'}</p>
     ${PLAYERS.length > 1 ? `<div class="row players">${PLAYERS.map(p => `<button data-p="${p}" class="${p === player ? 'primary' : ''}">${cap(p)}</button>`).join('')}</div>` : ''}
-    <div class="row"><button class="primary" id="ovStart">Start run</button></div>`);
-  $('#ovStart').onclick = () => { audio(); newRun(); startWave(); };
+    <div class="row"><button class="primary" id="ovStart">Start run</button><button id="ovHome">Games</button></div>`);
+  $('#ovStart').onclick = () => { audio(); newRun(); startWave(); }; $('#ovHome').onclick = () => { location.href = '../'; };
   $('#overlay').querySelectorAll('.players button').forEach(b => b.onclick = () => { SFX.key(); switchPlayer(b.dataset.p); });
   updateHud();
 }
@@ -400,8 +401,8 @@ function showShop() {
     updateHud(); showShop(); });
 }
 function togglePause() {
-  if (mode === 'play') { mode = 'pause'; overlay(`<h2>PAUSED</h2><p class="muted">Esc or the button to resume.</p><div class="row"><button class="primary" id="ovRes">Resume</button><button id="ovQuit">End run</button></div>`);
-    $('#ovRes').onclick = togglePause; $('#ovQuit').onclick = () => { endRun(); }; }
+  if (mode === 'play') { mode = 'pause'; overlay(`<h2>PAUSED</h2><p class="muted">Esc or the button to resume.</p><div class="row"><button class="primary" id="ovRes">Resume</button><button id="ovQuit">End run</button><button id="ovHome">Games</button></div>`);
+    $('#ovRes').onclick = togglePause; $('#ovQuit').onclick = () => { endRun(); }; $('#ovHome').onclick = () => { endRun(); sync.flushNow(); location.href = '../'; }; }
   else if (mode === 'pause') { mode = 'play'; overlayHide(); lastT = performance.now(); grabKeys(); }
 }
 
