@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Figures &amp; Formulas</title>
 <meta name="description" content="Math fluency games on one spaced-repetition scheduler.">
-<meta name="theme-color" content="#06080a">
+<meta name="theme-color" content="#0f1115">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Figures">
@@ -14,44 +14,103 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
-<link rel="stylesheet" href="css/theme.css?v=__BUILD__">
-<style>html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=VT323&display=swap">
+<style>
+/* Layout: a calm neutral launcher. The page itself has no game styling; each card is a poster in its own game's look. */
+:root{
+  --bg:#0f1115; --surface:#171a21; --line:#262a33; --fg:#f2f4f8; --fg-soft:#b7bdc9; --fg-dim:#7d8594; --accent:#ffc83d;
+  --font:'Baloo 2',ui-rounded,'SF Pro Rounded',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --pixel:'VT323','Courier New',ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:17px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px;
+  -webkit-tap-highlight-color:transparent}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:22px;min-width:0}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px 16px}
+h1{margin:0;font-size:clamp(28px,5vw,40px);font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+h1 small{font-weight:600;color:var(--fg-dim);font-size:.5em;margin-left:8px}
+.sync{font-size:13px;font-weight:700;letter-spacing:.6px;color:var(--fg-dim);text-transform:uppercase}
+.sync.ok{color:#5ef0a8}
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.who .label{color:var(--fg-dim);font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.6px}
+.players{display:flex;gap:8px;flex-wrap:wrap}
+.players button{font:inherit;font-weight:700;font-size:16px;border:2px solid var(--line);background:var(--surface);color:var(--fg-soft);border-radius:999px;padding:6px 16px;cursor:pointer}
+.players button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.players button:focus-visible,.card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.strip{display:flex;flex-wrap:wrap;gap:6px 20px;color:var(--fg-dim);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.strip b{color:var(--fg);font-weight:800}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.card{display:flex;flex-direction:column;border-radius:22px;overflow:hidden;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .12s,box-shadow .12s;min-width:0}
+.card:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,.45)}
+.card canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;max-width:100%}
+.card .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px}
+.card .kicker{font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.card h2{margin:0;font-size:26px;line-height:1.05;text-wrap:balance}
+.card p{margin:0;color:var(--fg-soft);font-size:15.5px}
+.card .foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.card .meta{color:var(--fg-dim);font-size:13.5px;font-weight:600}
+.play{font:inherit;font-weight:800;font-size:16px;border:0;border-radius:999px;padding:8px 20px;cursor:pointer}
+/* poster-specific */
+.card.shooter{background:#06110a}
+.card.shooter .body{font-family:var(--pixel);font-size:21px;letter-spacing:.3px}
+.card.shooter .kicker{color:#1c8a36;font-family:var(--pixel);font-size:17px}
+.card.shooter h2{font-family:var(--pixel);font-weight:400;font-size:34px;color:#eefff1;text-shadow:0 0 8px rgba(61,255,92,.45)}
+.card.shooter p{color:#3dff5c;opacity:.85;font-size:20px}
+.card.shooter .meta{color:#1c8a36;font-size:17px}
+.card.shooter .play{background:#3dff5c;color:#06110a;font-family:var(--pixel);font-size:21px;border-radius:3px;box-shadow:0 0 10px rgba(61,255,92,.35)}
+.card.slice{background:linear-gradient(180deg,#0e3c39,#0a2b29)}
+.card.slice .kicker{color:#5ef0a8}
+.card.slice h2{color:#ffc83d;text-shadow:0 2px 0 #e89a00}
+.card.slice p{color:#cfe8df}
+.card.slice .meta{color:#8fb8ad}
+.card.slice .play{background:linear-gradient(180deg,#ffd866,#ffc83d);color:#3a2500;box-shadow:0 3px 0 #e89a00}
+.soon{border-style:dashed;opacity:.7;align-items:center;justify-content:center;min-height:200px;color:var(--fg-dim);font-weight:700;text-align:center;padding:20px}
+footer{color:var(--fg-dim);font-size:14px}
+footer a{color:var(--fg-soft)}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
 </head>
 <body>
-<div class="console">
-  <header class="hud">
-    <div class="brand">FIGURES &amp; FORMULAS <span class="ver">hub</span></div>
-    <div class="hud-stats"><span id="hudSync" class="sync">LOCAL</span></div>
+<div class="wrap">
+  <header>
+    <h1>Figures &amp; Formulas <small>math games</small></h1>
+    <span id="hudSync" class="sync">LOCAL</span>
   </header>
 
-  <p class="hub-intro">Two games, one memory. Whatever you practice in either one feeds the same schedule, so the facts you need most keep coming back.</p>
+  <div class="who">
+    <span class="label">Playing as</span>
+    <div class="players" id="players"></div>
+  </div>
+  <div class="strip" id="strip"></div>
 
-  <section>
-    <h3 style="margin:0 0 6px;font-weight:400;font-size:17px;letter-spacing:1px;color:var(--phos-dim);text-transform:uppercase">Who's playing</h3>
-    <div class="row players" id="players" style="justify-content:flex-start"></div>
+  <section class="cards">
+    <a class="card slice" href="slice/">
+      <canvas data-preview="slice" width="640" height="360" aria-hidden="true"></canvas>
+      <div class="body">
+        <span class="kicker">Slice the right answer</span>
+        <h2>Slice of Truth</h2>
+        <p>A problem appears, then fruit fly up carrying numbers. Slice the one that's right. Sixty-second rounds, three strikes, combos.</p>
+        <div class="foot"><span class="meta">iPad · touch</span><span class="play">Play</span></div>
+      </div>
+    </a>
+    <a class="card shooter" href="shooter/">
+      <canvas data-preview="shooter" width="640" height="360" aria-hidden="true"></canvas>
+      <div class="body">
+        <span class="kicker">TYPE THE ANSWER</span>
+        <h2>FIGURES &amp; FORMULAS</h2>
+        <p>Alien ships carry problems toward your cruiser. Type the answer to shoot. Shields, streaks, a dreadnought every fourth wave.</p>
+        <div class="foot"><span class="meta">KEYBOARD</span><span class="play">PLAY</span></div>
+      </div>
+    </a>
+    <div class="card soon">More games coming.<br>Same facts, same memory.</div>
   </section>
 
-  <div class="statstrip" id="strip"></div>
-
-  <section class="cards" id="cards">
-    <a class="card" href="shooter/">
-      <span class="tag">Type the answer</span>
-      <h2>Figures &amp; Formulas</h2>
-      <canvas data-preview="shooter" width="320" height="140" aria-hidden="true"></canvas>
-      <p>Alien ships carry problems toward your cruiser. Type the answer to shoot. Shields, streaks, a dreadnought every fourth wave.</p>
-      <span class="go"><button tabindex="-1" class="primary">Play</button></span>
-    </a>
-    <a class="card" href="slice/">
-      <span class="tag">Catch the mistakes</span>
-      <h2>Slice of Truth</h2>
-      <canvas data-preview="slice" width="320" height="140" aria-hidden="true"></canvas>
-      <p>Equations fly up on fruit. Slice the false ones, leave the true ones alone. Sixty seconds, three strikes, combos.</p>
-      <span class="go"><button tabindex="-1" class="primary">Play</button></span>
-    </a>
-  </section>
-
-  <p class="help">Progress is per player. Pick a name once on each device and it sticks. <a href="shooter/#stats" style="color:var(--phos)">Stats</a> live inside the games.</p>
+  <footer>Both games feed one schedule: what you practice in either comes back when it's due. Progress is per player; pick a name once on each device and it sticks.</footer>
 </div>
 
 <script src="config.js?v=__BUILD__"></script>
@@ -66,44 +125,69 @@
   const { PLAYERS, cap } = FF.player;
   let player = FF.player.current();
   function render() {
-    $('#players').innerHTML = PLAYERS.map(p => `<button data-p="${p}" class="${p === player ? 'primary' : ''}">${cap(p)}</button>`).join('');
+    $('#players').innerHTML = PLAYERS.map(p => `<button data-p="${p}" class="${p === player ? 'on' : ''}">${cap(p)}</button>`).join('');
     $('#players').querySelectorAll('button').forEach(b => b.onclick = () => { player = b.dataset.p; FF.player.set(player); render(); });
     const S = FF.store.LocalStore.load(player, FF.player.FIRST);
     const sched = new FF.Scheduler(FF.facts, S, {});
     const cards = Object.values(S.cards), fluent = cards.filter(c => c.stage === 'fluent').length;
     const n = sched.todayCount(), g = S.settings.goal;
-    $('#strip').innerHTML = `<span>${cap(player)}</span><span>today <b>${n}${n >= g ? ' ✓' : '/' + g}</b></span><span>due <b>${sched.dueCount()}</b></span><span>fluent <b>${fluent}</b> of ${cards.length} seen</span>${S.synced ? `<span>synced <b>${new Date(S.synced).toLocaleDateString()}</b></span>` : ''}`;
-    $('#hudSync').textContent = (window.FF_CONFIG && FF_CONFIG.endpoint) ? 'SHEET' : 'LOCAL';
-    $('#hudSync').className = 'sync ' + ((window.FF_CONFIG && FF_CONFIG.endpoint) ? 'ok' : '');
+    $('#strip').innerHTML = `<span>Today <b>${n}${n >= g ? ' ✓' : ' / ' + g}</b></span><span>Due <b>${sched.dueCount()}</b></span><span>Fluent <b>${fluent}</b> of ${cards.length} seen</span>${S.synced ? `<span>Synced <b>${new Date(S.synced).toLocaleDateString()}</b></span>` : ''}`;
+    const sheet = !!(window.FF_CONFIG && FF_CONFIG.endpoint);
+    $('#hudSync').textContent = sheet ? 'Sheet connected' : 'Local only'; $('#hudSync').className = 'sync ' + (sheet ? 'ok' : '');
   }
   render();
 
-  /* tiny animated previews */
-  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  /* ---- posters: each drawn in its game's own idiom ---- */
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+
+  // Slice of Truth: orchard sky, pinned question, glossy fruit with number labels, a blade trail
+  const FRUIT = [
+    { skin: '#2b9348', skin2: '#1b5e20', stripes: true }, { skin: '#ff9f1c', skin2: '#e36a00' }, { skin: '#ef233c', skin2: '#9d0208', leaf: true }, { skin: '#ffe14d', skin2: '#e0b400', lemon: true }, { skin: '#8e44ad', skin2: '#4a1a6b' }, { skin: '#ffad8a', skin2: '#f07167' }
+  ];
+  function fruit(c, k, r) {
+    c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 14; c.shadowOffsetY = 6;
+    const g = c.createRadialGradient(-r * .35, -r * .4, r * .1, 0, 0, r * 1.05); g.addColorStop(0, '#fff'); g.addColorStop(.12, k.skin); g.addColorStop(1, k.skin2); c.fillStyle = g;
+    c.beginPath(); if (k.lemon) c.ellipse(0, 0, r * 1.15, r * .85, 0, 0, Math.PI * 2); else c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.shadowColor = 'transparent';
+    if (k.stripes) { c.strokeStyle = k.skin2; c.lineWidth = r * .1; for (let i = -2; i <= 2; i++) { c.beginPath(); c.ellipse(i * r * .32, 0, r * .12, r * .9, 0, -Math.PI / 2, Math.PI / 2); c.stroke(); } }
+    if (k.leaf) { c.fillStyle = '#52b788'; c.beginPath(); c.ellipse(r * .35, -r * .95, r * .28, r * .13, -.4, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-r * .35, -r * .45, r * .32, r * .18, -.6, 0, Math.PI * 2); c.fill(); c.restore();
+  }
+  function label(c, x, y, text, fs) { c.font = '800 ' + fs + 'px ' + getComputedStyle(document.documentElement).getPropertyValue('--font'); c.textAlign = 'center'; c.textBaseline = 'middle';
+    const w = c.measureText(text).width + fs * .9, h = fs * 1.35; c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 8; c.shadowOffsetY = 3; c.fillStyle = 'rgba(255,250,240,.96)'; roundRect(c, x - w / 2, y - h / 2, w, h, h / 2); c.fill(); c.restore(); c.fillStyle = '#1d2b2a'; c.fillText(text, x, y + fs * .06); }
+  function drawSlice(c, W, H, t) {
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0b3d3a'); g.addColorStop(1, '#06201f'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    const rg = c.createRadialGradient(W * .5, H * .3, 10, W * .5, H * .3, W * .6); rg.addColorStop(0, 'rgba(255,200,61,.16)'); rg.addColorStop(1, 'rgba(255,200,61,0)'); c.fillStyle = rg; c.fillRect(0, 0, W, H);
+    c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.moveTo(0, H); for (let x = 0; x <= W; x += 16) c.lineTo(x, H * .88 + Math.sin(x / W * 5) * H * .03); c.lineTo(W, H); c.fill();
+    // pinned question
+    c.font = '800 44px ' + getComputedStyle(document.documentElement).getPropertyValue('--font'); c.textAlign = 'center'; c.textBaseline = 'middle';
+    const q = '8 × 7 = ?', qw = c.measureText(q).width + 52, qh = 66; c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 16; c.shadowOffsetY = 5; c.fillStyle = 'rgba(255,250,240,.97)'; roundRect(c, W / 2 - qw / 2, 28, qw, qh, 22); c.fill(); c.restore(); c.fillStyle = '#1d2b2a'; c.fillText(q, W / 2, 28 + qh / 2 + 3);
+    // three fruit on gentle arcs, phase-shifted; the middle one carries the answer
+    const vals = ['54', '56', '63'];
+    [0, 1, 2].forEach(i => { const k = (t / 3200 + i * .12) % 1, x = W * (0.25 + i * .25), y = H + 40 - Math.sin(k * Math.PI) * (H * .62), r = 44;
+      c.save(); c.translate(x, y); c.rotate((k - .5) * .8); fruit(c, FRUIT[(i * 2 + 1) % FRUIT.length], r); c.restore(); label(c, x, y, vals[i], 26); });
+    // blade trail
+    const s = (t / 1400) % 1; c.lineCap = 'round'; for (let pass = 0; pass < 2; pass++) { c.strokeStyle = pass ? 'rgba(255,255,255,.9)' : 'rgba(255,200,61,.4)'; c.lineWidth = pass ? 5 : 14; c.beginPath(); c.moveTo(W * .3 + s * 30, H * .85); c.quadraticCurveTo(W * .5, H * .3, W * .72 - s * 30, H * .7); c.stroke(); }
+  }
+  // Figures & Formulas: phosphor screen, cruiser with corner shields, a hex drone with a problem, scanlines
+  function drawShooter(c, W, H, t) {
+    const pixel = getComputedStyle(document.documentElement).getPropertyValue('--pixel');
+    c.fillStyle = '#030904'; c.fillRect(0, 0, W, H); c.fillStyle = '#0d3a19'; for (let i = 0; i < 50; i++) c.fillRect((i * 197) % W, (i * 131) % H, 3, 3);
+    c.save(); c.translate(W / 2, H * .55); c.lineWidth = 3; [-3 * Math.PI / 4, -Math.PI / 4, 3 * Math.PI / 4, Math.PI / 4].forEach(a => { c.strokeStyle = '#4fa8ff'; c.beginPath(); c.arc(0, 0, 48, a - .6, a + .6); c.stroke(); });
+    c.strokeStyle = '#eefff1'; c.fillStyle = '#030904'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -30); c.lineTo(10, -8); c.lineTo(25, 14); c.lineTo(25, 21); c.lineTo(8, 12); c.lineTo(0, 19); c.lineTo(-8, 12); c.lineTo(-25, 21); c.lineTo(-25, 14); c.lineTo(-10, -8); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = '#3dff5c'; c.beginPath(); c.arc(0, 5, 6, 0, Math.PI * 2); c.stroke(); c.restore();
+    const k = (t / 2600) % 1, ex = 70 + (W / 2 - 70) * k, ey = 60 + (H * .55 - 60) * k;
+    c.strokeStyle = '#3dff5c'; c.lineWidth = 3; c.fillStyle = '#030904'; c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + Math.PI / 6; c.lineTo(ex + Math.cos(a) * 20, ey + Math.sin(a) * 20); } c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#3dff5c'; c.beginPath(); c.arc(ex + 4, ey + 4, 5, 0, Math.PI * 2); c.fill();
+    c.font = '30px ' + pixel; c.textAlign = 'center'; c.textBaseline = 'middle'; const p = '9 + 7', pw = c.measureText(p).width + 18; c.fillStyle = '#030904'; c.fillRect(ex - pw / 2, ey - 62, pw, 34); c.strokeStyle = '#3dff5c'; c.lineWidth = 1.5; c.strokeRect(ex - pw / 2, ey - 62, pw, 34); c.fillStyle = '#eefff1'; c.fillText(p, ex, ey - 44);
+    if (k > .55) { c.strokeStyle = '#eefff1'; c.lineWidth = 4; c.globalAlpha = (k - .55) * 2; c.beginPath(); c.moveTo(W / 2, H * .55); c.lineTo(ex, ey); c.stroke(); c.globalAlpha = 1; }
+    c.font = '22px ' + pixel; c.fillStyle = '#1c8a36'; c.textAlign = 'left'; c.fillText('> 16_', 24, H - 28); c.textAlign = 'right'; c.fillText('WAVE 3  SHIELDS ◤◥◣◢', W - 24, H - 28);
+    c.fillStyle = 'rgba(0,0,0,.28)'; for (let y = 0; y < H; y += 4) c.fillRect(0, y, W, 2);
+  }
   document.querySelectorAll('canvas[data-preview]').forEach(cv => {
-    const ctx = cv.getContext('2d'), W = cv.width, H = cv.height, kind = cv.dataset.preview;
-    const draw = t => {
-      ctx.fillStyle = css('--screen'); ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = css('--phos-faint'); for (let i = 0; i < 20; i++) ctx.fillRect((i * 97) % W, (i * 53) % H, 2, 2);
-      ctx.lineWidth = 2; ctx.font = '16px ' + css('--font-mono'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      if (kind === 'shooter') {
-        ctx.strokeStyle = css('--white'); ctx.fillStyle = css('--screen'); ctx.save(); ctx.translate(W / 2, H / 2);
-        ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(10, 8); ctx.lineTo(0, 4); ctx.lineTo(-10, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = css('--blue'); [[-2.36], [-0.79], [2.36], [0.79]].forEach(([a]) => { ctx.beginPath(); ctx.arc(0, 0, 22, a - .6, a + .6); ctx.stroke(); }); ctx.restore();
-        const k = (t / 1800) % 1; const ex = 40 + (W / 2 - 40) * k, ey = 30 + (H / 2 - 30) * k;
-        ctx.strokeStyle = css('--phos'); ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; ctx.lineTo(ex + Math.cos(a) * 9, ey + Math.sin(a) * 9); } ctx.closePath(); ctx.stroke();
-        ctx.fillStyle = css('--white'); ctx.fillText('7 + 8', ex, ey - 20);
-      } else {
-        const fruits = [['#ff6b6b', '7 × 8 = 54', .0], ['#ffb84d', '13 − 6 = 7', .33], ['#9bdc5a', '−4 − 3 = −7', .66]];
-        fruits.forEach(([col, eq, ph]) => { const k = ((t / 2400) + ph) % 1; const x = 60 + k * (W - 120), y = H - 10 - Math.sin(k * Math.PI) * (H - 40);
-          ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(0,0,0,.85)'; const w = ctx.measureText(eq).width + 10; ctx.fillRect(x - w / 2, y - 10, w, 20); ctx.fillStyle = '#fff'; ctx.fillText(eq, x, y + 1); });
-        ctx.strokeStyle = css('--white'); ctx.lineWidth = 3; ctx.globalAlpha = .7; ctx.beginPath(); const sx = (t / 900) % 1; ctx.moveTo(W * .2 + sx * 40, H * .8); ctx.quadraticCurveTo(W * .5, H * .2, W * .8 - sx * 40, H * .7); ctx.stroke(); ctx.globalAlpha = 1;
-      }
-      if (!reduce) requestAnimationFrame(draw);
-    };
-    requestAnimationFrame(draw);
+    const c = cv.getContext('2d'), W = cv.width, H = cv.height, fn = cv.dataset.preview === 'slice' ? drawSlice : drawShooter;
+    const frame = t => { fn(c, W, H, t); if (!reduce) requestAnimationFrame(frame); };
+    requestAnimationFrame(frame);
   });
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
