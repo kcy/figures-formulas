@@ -24,9 +24,13 @@
     return Object.assign({}, d, o, { settings: s });
   }
 
+  /* One saved state per player. The first player keeps the pre-player save, so nothing is lost on upgrade. */
+  const keyFor = (player, first) => (player === first ? KEY : KEY + ':' + player);
   const LocalStore = {
-    load() { try { const r = localStorage.getItem(KEY) || localStorage.getItem('figures-formulas-v1'); if (r) return merge(defaultState(), JSON.parse(r)); } catch (e) {} return defaultState(); },
-    save(S) { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+    load(player, first) { try { const r = localStorage.getItem(keyFor(player, first)) || (player === first ? localStorage.getItem('figures-formulas-v1') : null); if (r) return merge(defaultState(), JSON.parse(r)); } catch (e) {} return defaultState(); },
+    save(S, player, first) { try { localStorage.setItem(keyFor(player, first), JSON.stringify(S)); } catch (e) {} },
+    currentPlayer(fallback) { try { return localStorage.getItem(KEY + ':player') || fallback; } catch (e) { return fallback; } },
+    setPlayer(p) { try { localStorage.setItem(KEY + ':player', p); } catch (e) {} }
   };
 
   function SheetStore(cfg) { this.url = cfg.endpoint; this.key = cfg.key || ''; this.player = cfg.player || 'default'; this.status = 'idle'; this.lastError = null; }

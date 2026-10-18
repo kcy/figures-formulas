@@ -1,7 +1,7 @@
 /* Figures & Formulas — the MasterType-style game. One of possibly several front ends to FF.Scheduler. */
 (function () {
 'use strict';
-const VERSION = '2.0.1';
+const VERSION = '2.1.0';
 const $ = s => document.querySelector(s);
 const W = 560, H = 420, CX = 280, CY = 210;
 const { FAM, ITEMS, ORDER, fmt, hash } = FF.facts;
@@ -9,11 +9,24 @@ const { LocalStore, SheetStore, mergeProgress } = FF.store;
 const { median, today } = FF.util;
 
 /* ================= STATE, SCHEDULER, SYNC ================= */
-let S = LocalStore.load();
-function save() { LocalStore.save(S); }
+const CFG = window.FF_CONFIG || {};
+const PLAYERS = (CFG.players && CFG.players.length ? CFG.players : [CFG.player || 'player']).map(p => String(p).toLowerCase());
+const urlPlayer = (() => { try { const p = new URLSearchParams(location.search).get('player'); return p && PLAYERS.includes(p.toLowerCase()) ? p.toLowerCase() : null; } catch (e) { return null; } })();
+let player = urlPlayer || LocalStore.currentPlayer(PLAYERS.includes(CFG.player) ? CFG.player : PLAYERS[0]);
+if (!PLAYERS.includes(player)) player = PLAYERS[0];
+let S = LocalStore.load(player, PLAYERS[0]);
+function save() { LocalStore.save(S, player, PLAYERS[0]); }
 let sched = new FF.Scheduler(FF.facts, S, { onChange: save });
 let remote = null, syncTimer = null;
-const CFG = window.FF_CONFIG || {};
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+function switchPlayer(p) {
+  if (!PLAYERS.includes(p) || p === player) return;
+  clearTimeout(syncTimer); if (remote && sched.dirty.size) { const rows = sched.flushDirty(); remote.saveProgress(rows, null, S.history.slice(-1)[0]).catch(() => {}); }
+  player = p; LocalStore.setPlayer(p);
+  S = LocalStore.load(player, PLAYERS[0]); sched = new FF.Scheduler(FF.facts, S, { onChange: save }); sched.disabled = new Set();
+  if (CFG.endpoint) { remote = new SheetStore(Object.assign({}, CFG, { player })); remoteLoad(); }
+  applyNumpad(); showTitle();
+}
 
 function setSync(cls, text, title) { const el = $('#hudSync'); if (!el) return; el.className = 'sync ' + cls; el.textContent = text; el.title = title || ''; }
 function applyRemoteSettings(rs) {
@@ -386,18 +399,21 @@ function updateHud() {
   if (G) { hp.textContent = 'SHIELDS ' + G.shields.map((u, i) => u ? sym[i] : '·').join(''); hp.className = G.shields.some(Boolean) ? 'hp' : 'lo';
     hl.textContent = 'HULL ' + '▮'.repeat(Math.max(0, G.hull)) + '▯'.repeat(Math.max(0, G.maxHull - G.hull)); hl.className = G.hull <= 1 ? 'lo' : 'hp'; }
   else { hp.textContent = 'SHIELDS ◤◥◣◢'; hp.className = 'hp'; hl.textContent = 'HULL ▮▮▮'; hl.className = 'hp'; }
-  const n = sched.todayCount(), g = S.settings.goal; $('#hudGoal').textContent = n >= g ? `TODAY ${n} ✓` : `TODAY ${n}/${g}`;
+  const n = sched.todayCount(), g = S.settings.goal; $('#hudGoal').textContent = (PLAYERS.length > 1 ? cap(player).toUpperCase() + ' · ' : '') + (n >= g ? `TODAY ${n} ✓` : `TODAY ${n}/${g}`);
   $('#btnSound').textContent = 'Sound: ' + (S.settings.sound ? 'on' : 'off');
 }
 function showTitle() {
   mode = 'title'; G = null;
   const todayN = sched.todayCount(), known = Object.keys(S.cards).length, fl = Object.values(S.cards).filter(c => c.stage === 'fluent').length;
   overlay(`<h2>FIGURES &amp; FORMULAS</h2>
+    ${PLAYERS.length > 1 ? `<p class="muted">Playing as ${cap(player)}</p>` : ''}
     <p>Alien ships carry problems. Type the answer, press Enter, and your cruiser fires at the one that matches. Five right in a row restores a shield.</p>
     <p class="muted">${todayN >= S.settings.goal ? `Today's goal done ✓ (${todayN}). Extra practice still counts.` : `Today's goal: ${S.settings.goal} problems · ${todayN} done`}</p>
     <p class="muted">${known ? `${known} facts in rotation · ${fl} fluent · ${sched.dueCount()} due now` : 'First run: new facts come in a few at a time.'}</p>
+    ${PLAYERS.length > 1 ? `<div class="row players">${PLAYERS.map(p => `<button data-p="${p}" class="${p === player ? 'primary' : ''}">${cap(p)}</button>`).join('')}</div>` : ''}
     <div class="row"><button class="primary" id="ovStart">Start run</button></div>`);
   $('#ovStart').onclick = () => { audio(); newRun(); startWave(); };
+  $('#overlay').querySelectorAll('.players button').forEach(b => b.onclick = () => { SFX.key(); switchPlayer(b.dataset.p); });
   updateHud();
 }
 function showShop() {
@@ -474,7 +490,7 @@ function showStats() {
 function showSettings() {
   const s = S.settings;
   panel(`<div class="row" style="justify-content:space-between"><h2>SETTINGS</h2><button id="pClose">Close</button></div>
-  ${remote ? '<p class="muted">These are saved to the Sheet too, so they follow him to any device.</p>' : ''}
+  <p class="muted">Settings for ${cap(player)}${remote ? ', saved to the Sheet too so they follow to any device' : ''}.</p>
   <h3>Fact families</h3>
   ${Object.keys(FAM).map(f => `<label class="opt"><input type="checkbox" id="fam_${f}" ${s.fams[f] ? 'checked' : ''}> <span class="fam-${f}">${FAM[f].name}</span> <span style="color:var(--phos-dim)">· ${ORDER.filter(id => ITEMS[id].fam === f).length} facts · fast under ${FAM[f].fast}s</span></label>`).join('')}
   <label class="opt" style="margin-top:8px">Layers <select id="setLayer">
@@ -546,7 +562,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && mod
 /* ---------- boot ---------- */
 function start() {
   loadColors(); applyNumpad(); $('#ver').textContent = 'v' + VERSION; showTitle(); requestAnimationFrame(loop);
-  if (CFG.endpoint) { remote = new SheetStore(CFG); remoteLoad(); } else setSync('', 'LOCAL', 'Progress is saved in this browser');
+  if (CFG.endpoint) { remote = new SheetStore(Object.assign({}, CFG, { player })); remoteLoad(); } else setSync('', 'LOCAL', 'Progress is saved in this browser');
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 start();

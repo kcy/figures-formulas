@@ -14,7 +14,8 @@
  *   Progress   one row per fact the player has seen; the game updates it after each wave
  *   Sessions   one row per run
  *   History    one row per day: answers and correct answers
- * With several players, Progress/Sessions/History get a "_<player>" suffix (e.g. Progress_indira).
+ * With several players, Progress/Sessions/History/Settings get a "_<player>" suffix (e.g. Progress_krishna).
+ * The plain Settings tab holds the defaults; Settings_<player> overrides it for that player.
  */
 var SECRET = 'change-me';
 
@@ -48,7 +49,7 @@ function doPost(e) {
       case 'load': return out(load(ss, player));
       case 'save': return out(save(ss, player, body));
       case 'catalog': return out(catalog(ss, body.facts || []));
-      case 'settings': return out(saveSettings(ss, body.settings || {}));
+      case 'settings': return out(saveSettings(ss, player, body.settings || {}));
       default: return out({ error: 'unknown action' });
     }
   } catch (err) { return out({ error: String(err) }); }
@@ -57,7 +58,7 @@ function doPost(e) {
 
 /* ---------- actions ---------- */
 function load(ss, player) {
-  var settings = readSettings(ss);
+  var settings = readSettings(ss, player);
   var facts = sheet(ss, 'Facts', FACT_COLS), fr = rows(facts), custom = [], disabled = [];
   fr.forEach(function (r) {
     if (String(r.enabled).toUpperCase() === 'FALSE') disabled.push(r.id);
@@ -105,23 +106,28 @@ function catalog(ss, facts) {
   return { ok: true, added: add.length };
 }
 
-function saveSettings(ss, s) {
+function saveSettings(ss, player, s) {
   var flat = {};
   Object.keys(s).forEach(function (k) { if (k === 'fams') Object.keys(s.fams).forEach(function (f) { flat['fam_' + f] = !!s.fams[f]; }); else flat[k] = s[k]; });
-  var sh = sheet(ss, 'Settings', ['key', 'value']), v = sh.getDataRange().getValues(), seen = {};
+  var sh = sheet(ss, suffixed('Settings', player), ['key', 'value']), v = sh.getDataRange().getValues(), seen = {};
   for (var i = 1; i < v.length; i++) { var k = v[i][0]; if (k in flat) { sh.getRange(i + 1, 2).setValue(flat[k]); seen[k] = 1; } }
   Object.keys(flat).forEach(function (k) { if (!seen[k]) sh.appendRow([k, flat[k]]); });
   return { ok: true };
 }
 
 /* ---------- helpers ---------- */
-function readSettings(ss) {
-  var v = sheet(ss, 'Settings', ['key', 'value']).getDataRange().getValues(), s = { fams: {} };
-  for (var i = 1; i < v.length; i++) {
-    var k = String(v[i][0]), val = v[i][1]; if (!k) continue;
-    if (k.indexOf('fam_') === 0) s.fams[k.slice(4)] = (val === true || String(val).toUpperCase() === 'TRUE');
-    else s[k] = val;
-  }
+function readSettings(ss, player) {
+  var s = { fams: {} };
+  var apply = function (name) {
+    var sh = ss.getSheetByName(name); if (!sh) return;
+    var v = sh.getDataRange().getValues();
+    for (var i = 1; i < v.length; i++) {
+      var k = String(v[i][0]), val = v[i][1]; if (!k || val === '') continue;
+      if (k.indexOf('fam_') === 0) s.fams[k.slice(4)] = (val === true || String(val).toUpperCase() === 'TRUE');
+      else s[k] = val;
+    }
+  };
+  apply('Settings'); if (player !== 'default') apply(suffixed('Settings', player)); // shared defaults, then the player's overrides
   return s;
 }
 function fillFromFacts(ss, prog) {
