@@ -1,7 +1,7 @@
 /* Figures & Formulas — the MasterType-style game. One of possibly several front ends to FF.Scheduler. */
 (function () {
 'use strict';
-const VERSION = '2.2.1';
+const VERSION = '2.3.0';
 const $ = s => document.querySelector(s);
 const W = 560, H = 420, CX = 280, CY = 210;
 const { FAM, ITEMS, ORDER, fmt, hash } = FF.facts;
@@ -66,7 +66,7 @@ let COL = {};
 function loadColors() { COL = { phos: css('--phos'), dim: css('--phos-dim'), faint: css('--phos-faint'), white: css('--white'),
   orange: css('--orange'), blue: css('--blue'), violet: css('--violet'), danger: css('--danger'), warn: css('--warn'), screen: css('--screen') }; }
 function famColor(f) { return { add: COL.phos, sub: COL.orange, neg: COL.blue, mul: COL.violet, div: COL.warn, negmul: COL.danger }[f] || COL.phos; }
-const CORNERS = [{ x: 34, y: 34 }, { x: W - 34, y: 34 }, { x: 34, y: H - 34 }, { x: W - 34, y: H - 34 }];
+const CORNERS = [{ x: 60, y: 70 }, { x: W - 60, y: 70 }, { x: 60, y: H - 70 }, { x: W - 60, y: H - 70 }];
 const CORNER_ANG = [-3 * Math.PI / 4, -Math.PI / 4, 3 * Math.PI / 4, Math.PI / 4];
 
 let G = null, mode = 'title', buf = '', lastT = 0, effects = [], shake = 0, banner = null;
@@ -77,23 +77,28 @@ function newRun() {
     spawnT: 0, boss: null, answers: 0, correct: 0, practiced: new Set(), startedAt: Date.now(), lastFire: 0 };
   sched.newSession(); buf = ''; effects = []; banner = null;
 }
+/* Think time: an enemy sits still at its corner, problem showing, before it starts moving. Adapts per player. */
+const DELAY_START = 3, DELAY_MIN = 0, DELAY_MAX = 4;
+const thinkDelay = () => (S.meta.thinkTimeShooter == null ? DELAY_START : S.meta.thinkTimeShooter);
+function adjustDelay(d) { S.meta.thinkTimeShooter = Math.round(Math.max(DELAY_MIN, Math.min(DELAY_MAX, thinkDelay() + d)) * 100) / 100; }
 function pickNext(onScreen) { return sched.next(onScreen.map(e => e.id), onScreen.map(e => e.item.answer)); }
 function startWave() {
   G.wave++; G.waveKills = 0; G.enemies = []; G.boss = null; G.spawnT = 0; buf = '';
   if (G.wave % 4 === 0) {
     const id = pickNext([]); if (!id) { overlayMsg('No facts enabled', 'Turn on at least one family in Settings.'); mode = 'title'; return; }
-    G.boss = { id, item: ITEMS[id], hp: 4 + Math.floor(G.wave / 4), maxHp: 4 + Math.floor(G.wave / 4), askedAt: performance.now() / 1000, lastDmg: performance.now() / 1000, dmgFlash: 0, graded: false, misses: 0 };
+    G.boss = { id, item: ITEMS[id], hp: 4 + Math.floor(G.wave / 4), maxHp: 4 + Math.floor(G.wave / 4), askedAt: performance.now() / 1000 + thinkDelay(), lastDmg: performance.now() / 1000 + thinkDelay(), dmgFlash: 0, graded: false, misses: 0 };
     G.needed = 1; SFX.boss(); showBanner('DREADNOUGHT · ONLY FAST ANSWERS HURT IT', COL.violet, 2.6);
   } else G.needed = Math.min(16, 6 + 2 * G.wave);
   mode = 'play'; overlayHide(); updateHud(); grabKeys();
 }
 function maxActive() { return G.wave < 3 ? 1 : G.wave < 5 ? 2 : G.wave < 8 ? 3 : 4; }
-function enemySpeed() { const acc = sched.accuracy(); const am = acc < .8 ? .55 : acc < .9 ? .75 : 1; return 26 * (1 + .09 * (G.wave - 1)) * am * G.thrust; }
+function enemySpeed() { const acc = sched.accuracy(); const am = acc < .8 ? .55 : acc < .9 ? .75 : 1; return 18 * (1 + .06 * (G.wave - 1)) * am * G.thrust; }
 function spawn() {
   const id = pickNext(G.enemies); if (!id) return;
   const used = new Set(G.enemies.map(e => e.corner)); const free = [0, 1, 2, 3].filter(c => !used.has(c));
   const corner = free[Math.floor(Math.random() * free.length)]; const p = CORNERS[corner];
-  G.enemies.push({ id, item: ITEMS[id], corner, x: p.x, y: p.y, spawnAt: performance.now() / 1000, graded: false, hold: 0, dead: false, misses: 0 });
+  const now = performance.now() / 1000, wait = thinkDelay();
+  G.enemies.push({ id, item: ITEMS[id], corner, x: p.x, y: p.y, spawnAt: now + wait, think: wait, thinkTotal: wait, graded: false, hold: 0, dead: false, misses: 0, adjusted: false });
 }
 function target() { let b = null, bd = 1e9; for (const e of G.enemies) { if (e.dead) continue; const d = Math.hypot(e.x - CX, e.y - CY); if (d < bd) { bd = d; b = e; } } return b; }
 function floatText(x, y, text, color, life) { effects.push({ k: 'text', x, y, text, color, life, t: 0 }); }
@@ -125,11 +130,12 @@ function fire() {
   if (G.boss) { bossAnswer(val, now); updateHud(); return; }
   const hit = G.enemies.find(e => !e.dead && e.item.answer === val);
   if (hit) {
-    const rt = now - Math.max(hit.spawnAt, G.lastFire || 0), first = !hit.graded;
+    const rt = Math.max(0, now - Math.max(hit.spawnAt, G.lastFire || 0)), first = !hit.graded;
     if (first) { sched.report(hit.id, true, rt); G.correct++; G.answers++; G.practiced.add(hit.id); }
     hit.dead = true; bolt(hit.x, hit.y, famColor(hit.item.fam)); boom(hit.x, hit.y, famColor(hit.item.fam)); SFX.fire(); setTimeout(SFX.kill, 120);
     const fast = first && rt < FAM[hit.item.fam].fast; const pts = first ? 10 + (fast ? 5 : 0) : 5; G.score += pts; G.credits += pts;
     if (fast) floatText(hit.x, hit.y - 26, 'FAST +' + pts, COL.white, .8);
+    if (first && !hit.adjusted) { hit.adjusted = true; adjustDelay(fast ? -.1 : -.03); }
     G.kills++; G.waveKills++; S.meta.kills++;
     G.enemies = G.enemies.filter(e => e !== hit); G.lastFire = now;
     if (first) addStreak();
@@ -137,17 +143,17 @@ function fire() {
   } else {
     const t = target(); G.streak = 0;
     if (t) {
-      if (!t.graded) { sched.report(t.id, false, now - Math.max(t.spawnAt, G.lastFire || 0)); G.answers++; G.practiced.add(t.id); }
+      if (!t.graded) { sched.report(t.id, false, Math.max(0, now - Math.max(t.spawnAt, G.lastFire || 0))); G.answers++; G.practiced.add(t.id); }
       t.graded = true; t.misses++;
       if (t.misses === 1) { t.hold = 1.2; showBanner('NOT ' + fmt(val) + ' · TRY AGAIN', COL.warn, 1.3); SFX.wrong(); }
-      else { t.hold = 2.2; t.reveal = true; showBanner(t.item.prompt + ' = ' + fmt(t.item.answer), COL.warn, 2.4, true); SFX.wrong(); hitCorner(t.corner); }
+      else { t.hold = 2.2; t.reveal = true; if (!t.adjusted) { t.adjusted = true; adjustDelay(.25); } showBanner(t.item.prompt + ' = ' + fmt(t.item.answer), COL.warn, 2.4, true); SFX.wrong(); hitCorner(t.corner); }
     } else SFX.wrong();
     G.lastFire = now;
   }
   updateHud();
 }
 function bossAnswer(val, now) {
-  const b = G.boss, rt = now - b.askedAt, F = FAM[b.item.fam];
+  const b = G.boss, rt = Math.max(0, now - b.askedAt), F = FAM[b.item.fam];
   if (val === b.item.answer) {
     const first = !b.graded;
     if (first) { sched.report(b.id, true, rt); G.correct++; G.answers++; G.practiced.add(b.id); }
@@ -171,8 +177,8 @@ function bossAnswer(val, now) {
 }
 function nextBossProblem() {
   const b = G.boss; if (!b) return;
-  if (b.reask) { b.reask = false; b.misses = 1; b.askedAt = performance.now() / 1000; return; }
-  const id = pickNext([]); if (!id) return; b.id = id; b.item = ITEMS[id]; b.graded = false; b.misses = 0; b.askedAt = performance.now() / 1000;
+  if (b.reask) { b.reask = false; b.misses = 1; b.askedAt = performance.now() / 1000 + thinkDelay(); return; }
+  const id = pickNext([]); if (!id) return; b.id = id; b.item = ITEMS[id]; b.graded = false; b.misses = 0; b.askedAt = performance.now() / 1000 + thinkDelay(); b.lastDmg = Math.max(b.lastDmg, b.askedAt);
 }
 function emp() {
   if (mode !== 'play' || G.bombs <= 0 || G.boss || !G.enemies.length) return;
@@ -189,6 +195,7 @@ function runSummary() {
   const acc = G.answers ? Math.round(100 * G.correct / G.answers) : 0;
   const fl = [...G.practiced].filter(id => S.cards[id] && S.cards[id].stage === 'fluent').length;
   return `<p>Wave ${G.wave} · Score ${G.score} · best streak ${G.bestStreak}</p>
+    <p class="muted">Think time now ${thinkDelay().toFixed(1)} s${thinkDelay() <= .3 ? ' · lightning!' : ''}</p>
     <p>${G.answers} problems, ${acc}% right first try · ${G.practiced.size} facts practiced · ${fl} now fluent</p>`;
 }
 function finishRun() { S.meta.runs++; S.meta.best = Math.max(S.meta.best, G.score); save(); sync.save(sessionRow()); }
@@ -221,13 +228,15 @@ function update(dt) {
     return;
   }
   const active = G.enemies.length; G.spawnT -= dt;
-  if (active < maxActive() && G.waveKills + active < G.needed && G.spawnT <= 0) { spawn(); G.spawnT = Math.max(.8, 2.4 - .1 * G.wave); }
+  if (active < maxActive() && G.waveKills + active < G.needed && G.spawnT <= 0) { spawn(); G.spawnT = Math.max(1.2, 3 - .1 * G.wave); }
   const sp = enemySpeed();
   for (const e of G.enemies) {
+    if (e.think > 0) { e.think -= dt; continue; }
     if (e.hold > 0) { e.hold -= dt; continue; }
     const dx = CX - e.x, dy = CY - e.y, d = Math.hypot(dx, dy);
     if (d < 26) {
-      if (!e.graded) { sched.report(e.id, false, now - Math.max(e.spawnAt, G.lastFire || 0)); G.answers++; G.practiced.add(e.id); }
+      if (!e.graded) { sched.report(e.id, false, Math.max(0, now - Math.max(e.spawnAt, G.lastFire || 0))); G.answers++; G.practiced.add(e.id); }
+      if (!e.adjusted) { e.adjusted = true; adjustDelay(.25); }
       showBanner(e.item.prompt + ' = ' + fmt(e.item.answer), COL.warn, 2.4, true); e.dead = true; boom(e.x, e.y, COL.danger); hitCorner(e.corner);
       if (G.hull <= 0) return; continue;
     }
@@ -295,9 +304,10 @@ function drawEnemy(e) {
   }
   ctx.restore();
   ctx.font = '22px ' + css('--font-mono'); const t = e.reveal ? e.item.prompt + ' = ' + fmt(e.item.answer) : e.item.prompt; const tw = ctx.measureText(t).width + 12;
-  let bx = e.x - tw / 2, by = e.y + (e.y < CY ? -44 : 22); bx = Math.max(4, Math.min(W - tw - 4, bx));
+  let bx = e.x - tw / 2, by = e.y + (e.y < CY ? -48 : 26); if (by < 6) by = e.y + 26; if (by > H - 34) by = e.y - 48; bx = Math.max(4, Math.min(W - tw - 4, bx));
   ctx.fillStyle = COL.screen; ctx.fillRect(bx, by, tw, 24); ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.strokeRect(bx + .5, by + .5, tw - 1, 23);
   ctx.fillStyle = e.graded ? COL.warn : COL.white; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(t, bx + 6, by + 13);
+  if (e.think > 0 && e.thinkTotal > 0) { const fr = e.think / e.thinkTotal; ctx.fillStyle = COL.faint; ctx.fillRect(bx, by + 26, tw, 4); ctx.fillStyle = COL.warn; ctx.fillRect(bx, by + 26, tw * fr, 4); }
   if (target() === e) { ctx.strokeStyle = COL.white; ctx.lineWidth = 2; const r = 24;
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => { ctx.beginPath(); ctx.moveTo(e.x + sx * r, e.y + sy * (r - 8)); ctx.lineTo(e.x + sx * r, e.y + sy * r); ctx.lineTo(e.x + sx * (r - 8), e.y + sy * r); ctx.stroke(); }); }
 }
@@ -315,9 +325,9 @@ function drawBoss() {
   const t = b.item.prompt; const tw = ctx.measureText(t).width + 16;
   ctx.fillStyle = COL.screen; ctx.fillRect(CX - tw / 2, CY - 100, tw, 34); ctx.strokeStyle = COL.violet; ctx.lineWidth = 1; ctx.strokeRect(CX - tw / 2 + .5, CY - 100 + .5, tw - 1, 33);
   ctx.fillStyle = b.graded ? COL.warn : COL.white; ctx.fillText(t, CX, CY - 83);
-  const win = FAM[b.item.fam].fast * 1.4, el = now - b.askedAt, frac = Math.max(0, 1 - el / win);
+  const win = FAM[b.item.fam].fast * 1.4, el = now - b.askedAt, frac = el < 0 ? 1 : Math.max(0, 1 - el / win);
   ctx.fillStyle = COL.faint; ctx.fillRect(CX - 80, CY - 60, 160, 6); ctx.fillStyle = frac > 0 ? COL.white : COL.danger; ctx.fillRect(CX - 80, CY - 60, 160 * frac, 6);
-  ctx.font = '16px ' + css('--font-mono'); ctx.fillStyle = COL.dim; ctx.fillText(frac > 0 ? 'SPEED WINDOW' : 'TOO SLOW — STILL COUNTS, NO DAMAGE', CX, CY - 46);
+  ctx.font = '16px ' + css('--font-mono'); ctx.fillStyle = COL.dim; ctx.fillText(el < 0 ? 'THINK… ' + Math.ceil(-el) : frac > 0 ? 'SPEED WINDOW' : 'TOO SLOW — STILL COUNTS, NO DAMAGE', CX, CY - 46);
 }
 function drawInput() {
   ctx.font = '26px ' + css('--font-mono'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
