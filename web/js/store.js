@@ -30,6 +30,7 @@
     load(player, first) { try { const r = localStorage.getItem(keyFor(player, first)) || (player === first ? localStorage.getItem('figures-formulas-v1') : null); if (r) return merge(defaultState(), JSON.parse(r)); } catch (e) {} return defaultState(); },
     save(S, player, first) { try { localStorage.setItem(keyFor(player, first), JSON.stringify(S)); } catch (e) {} },
     currentPlayer(fallback) { try { return localStorage.getItem(KEY + ':player') || fallback; } catch (e) { return fallback; } },
+    clear(player, first) { try { localStorage.removeItem(keyFor(player, first)); } catch (e) {} },
     setPlayer(p) { try { localStorage.setItem(KEY + ':player', p); } catch (e) {} }
   };
 

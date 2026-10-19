@@ -14,9 +14,10 @@
   function Sync(o) {
     this.player = o.player; this.getState = o.getState; this.getSched = o.getSched;
     this.onStatus = o.onStatus || function () {}; this.onLoaded = o.onLoaded || function () {};
-    this.remote = CFG.endpoint ? new SheetStore(Object.assign({}, CFG, { player: o.player })) : null;
+    const guest = (CFG.guests || []).map(p => String(p).toLowerCase()).includes(String(o.player).toLowerCase());
+    this.remote = CFG.endpoint && !guest ? new SheetStore(Object.assign({}, CFG, { player: o.player })) : null;
     this.timer = null;
-    if (!this.remote) this.onStatus('local', 'LOCAL', 'Progress is saved in this browser');
+    if (!this.remote) this.onStatus('local', guest ? 'GUEST' : 'LOCAL', guest ? 'Guest progress stays on this device and is not sent to the Sheet' : 'Progress is saved in this browser');
   }
   const P = Sync.prototype;
   P.applySettings = function (rs) {

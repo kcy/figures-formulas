@@ -43,6 +43,7 @@ h1 small{font-weight:600;color:var(--fg-dim);font-size:.5em;margin-left:8px}
 .players button:focus-visible,.card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .strip{display:flex;flex-wrap:wrap;gap:6px 20px;color:var(--fg-dim);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
 .strip b{color:var(--fg);font-weight:800}
+.linkish{font:inherit;font-weight:700;color:var(--fg-soft);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
 .card{display:flex;flex-direction:column;border-radius:22px;overflow:hidden;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);
   box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .12s,box-shadow .12s;min-width:0}
@@ -174,13 +175,15 @@ footer a{color:var(--fg-soft)}
   function render() {
     $('#players').innerHTML = PLAYERS.map(p => `<button data-p="${p}" class="${p === player ? 'on' : ''}">${cap(p)}</button>`).join('');
     $('#players').querySelectorAll('button').forEach(b => b.onclick = () => { player = b.dataset.p; FF.player.set(player); render(); });
+    const guest = FF.player.isGuest(player);
     const S = FF.store.LocalStore.load(player, FF.player.FIRST);
     const sched = new FF.Scheduler(FF.facts, S, {});
     const cards = Object.values(S.cards), fluent = cards.filter(c => c.stage === 'fluent').length;
     const n = sched.todayCount(), g = S.settings.goal;
-    $('#strip').innerHTML = `<span>Today <b>${n}${n >= g ? ' ✓' : ' / ' + g}</b></span><span>Due <b>${sched.dueCount()}</b></span><span>Fluent <b>${fluent}</b> of ${cards.length} seen</span>${S.synced ? `<span>Synced <b>${new Date(S.synced).toLocaleDateString()}</b></span>` : ''}`;
-    const sheet = !!(window.FF_CONFIG && FF_CONFIG.endpoint);
-    $('#hudSync').textContent = sheet ? 'Sheet connected' : 'Local only'; $('#hudSync').className = 'sync ' + (sheet ? 'ok' : '');
+    $('#strip').innerHTML = `<span>Today <b>${n}${n >= g ? ' ✓' : ' / ' + g}</b></span><span>Due <b>${sched.dueCount()}</b></span><span>Fluent <b>${fluent}</b> of ${cards.length} seen</span>${S.synced ? `<span>Synced <b>${new Date(S.synced).toLocaleDateString()}</b></span>` : ''}${guest ? `<span>Guest: saved on this device only · <button class="linkish" id="fresh">Start fresh</button></span>` : ''}`;
+    if (guest) $('#fresh').onclick = () => { if (confirm('Clear guest progress on this device?')) { FF.store.LocalStore.clear(player, FF.player.FIRST); render(); } };
+    const sheet = !!(window.FF_CONFIG && FF_CONFIG.endpoint) && !guest;
+    $('#hudSync').textContent = sheet ? 'Sheet connected' : guest ? 'Guest · not synced' : 'Local only'; $('#hudSync').className = 'sync ' + (sheet ? 'ok' : '');
   }
   render();
 
