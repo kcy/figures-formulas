@@ -68,10 +68,14 @@
     this.onChange();
   };
 
-  P.next = function (excludeIds, excludeAnswers) {
+  /* opts.filter(item) narrows to facts a game can show (e.g. only add/sub on a number line).
+   * opts.ignoreFamilies lets a game use facts outside the player's family switches (Array Grid always uses times tables). */
+  P.next = function (excludeIds, excludeAnswers, opts) {
+    opts = opts || {};
     const S = this.S, F = this.F, now = Date.now();
     const ids = new Set(excludeIds || []), ans = new Set(excludeAnswers || []);
-    const okItem = id => F.ITEMS[id] && this.famOn(id) && !ids.has(id) && !ans.has(F.ITEMS[id].answer);
+    const inScope = id => opts.ignoreFamilies ? (F.ITEMS[id] && !this.disabled.has(id)) : this.famOn(id);
+    const okItem = id => F.ITEMS[id] && inScope(id) && (!opts.filter || opts.filter(F.ITEMS[id])) && !ids.has(id) && !ans.has(F.ITEMS[id].answer);
     const take = id => { this.sessionCount[id] = (this.sessionCount[id] || 0) + 1; return id; };
     for (let i = 0; i < this.replay.length; i++) if (this.replay[i].at <= now && okItem(this.replay[i].id)) return take(this.replay.splice(i, 1)[0].id);
     const due = Object.keys(S.cards).filter(id => S.cards[id].due <= now && okItem(id) && !this.sessionDone.has(id)).sort((a, b) => S.cards[a].due - S.cards[b].due);

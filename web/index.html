@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=VT323&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=VT323&family=Fredoka:wght@600;700&family=Nunito:wght@800;900&family=Rubik:ital,wght@0,700;0,900;1,900&family=Kalam:wght@700&family=Patrick+Hand&display=swap">
 <style>
 /* Layout: a calm neutral launcher. The page itself has no game styling; each card is a poster in its own game's look. */
 :root{
@@ -69,6 +69,18 @@ h1 small{font-weight:600;color:var(--fg-dim);font-size:.5em;margin-left:8px}
 .card.slice p{color:#cfe8df}
 .card.slice .meta{color:#8fb8ad}
 .card.slice .play{background:linear-gradient(180deg,#ffd866,#ffc83d);color:#3a2500;box-shadow:0 3px 0 #e89a00}
+.card.hop{background:linear-gradient(180deg,#e9f8ef,#cdeedd);font-family:Fredoka,var(--font)}
+.card.hop .kicker{color:#2a9d8f}.card.hop h2{color:#123c4a;font-weight:700}.card.hop p{color:#2f6273}.card.hop .meta{color:#5d8a95}
+.card.hop .play{background:#7bd25b;color:#123c4a;box-shadow:0 3px 0 #4e9e35}
+.card.bubbles{background:linear-gradient(180deg,#2a2560,#1e1b4b);font-family:Nunito,var(--font)}
+.card.bubbles .kicker{color:#7ee8d6}.card.bubbles h2{color:#f4f0ff;font-weight:900}.card.bubbles p{color:#d4ccf5}.card.bubbles .meta{color:#a29bd0}
+.card.bubbles .play{background:#7ee8d6;color:#0b2b2a;box-shadow:0 3px 0 #3fb8a3}
+.card.race{background:#fffaf0;border:3px solid #1d1d3a;box-shadow:6px 6px 0 #1d1d3a;font-family:Rubik,var(--font)}
+.card.race .kicker{color:#ff6b35;font-weight:900}.card.race h2{color:#1d1d3a;font-style:italic;font-weight:900;letter-spacing:-.02em}.card.race p{color:#3e3e66}.card.race .meta{color:#77779a}
+.card.race .play{background:#ff6b35;color:#fff;border-radius:10px;box-shadow:3px 3px 0 #1d1d3a}
+.card.arrays{background:#fffefa;background-image:linear-gradient(#d6e2f3 1px,transparent 1px),linear-gradient(90deg,#d6e2f3 1px,transparent 1px);background-size:22px 22px;font-family:"Patrick Hand",var(--font)}
+.card.arrays .kicker{color:#2f6fde;font-size:15px}.card.arrays h2{color:#22304a;font-family:Kalam,var(--font);font-weight:700}.card.arrays p{color:#44506a;font-size:17px}.card.arrays .meta{color:#7c8598}
+.card.arrays .play{background:#2f6fde;color:#fff;border-radius:8px;box-shadow:0 3px 0 #1f4fa8}
 .soon{border-style:dashed;opacity:.7;align-items:center;justify-content:center;min-height:200px;color:var(--fg-dim);font-weight:700;text-align:center;padding:20px}
 footer{color:var(--fg-dim);font-size:14px}
 footer a{color:var(--fg-soft)}
@@ -107,10 +119,45 @@ footer a{color:var(--fg-soft)}
         <div class="foot"><span class="meta">KEYBOARD</span><span class="play">PLAY</span></div>
       </div>
     </a>
-    <div class="card soon">More games coming.<br>Same facts, same memory.</div>
+    <a class="card hop" href="hop/">
+      <canvas data-preview="hop" width="640" height="360" aria-hidden="true"></canvas>
+      <div class="body">
+        <span class="kicker">Number line · signed numbers</span>
+        <h2>Lily Hop</h2>
+        <p>The frog starts on the first number. Tap the lily pad where it lands: left to subtract, right to add. A wrong guess shows the real hop.</p>
+        <div class="foot"><span class="meta">iPad · touch</span><span class="play">Play</span></div>
+      </div>
+    </a>
+    <a class="card bubbles" href="bubbles/">
+      <canvas data-preview="bubbles" width="640" height="360" aria-hidden="true"></canvas>
+      <div class="body">
+        <span class="kicker">Pop the right answer</span>
+        <h2>Bubble Pop</h2>
+        <p>Read the problem, then bubbles drift up with answers. Pop the right one before it reaches the surface. Calm, 90 seconds, chains score extra.</p>
+        <div class="foot"><span class="meta">iPad · touch</span><span class="play">Play</span></div>
+      </div>
+    </a>
+    <a class="card race" href="race/">
+      <canvas data-preview="race" width="640" height="360" aria-hidden="true"></canvas>
+      <div class="body">
+        <span class="kicker">Beat your own pace</span>
+        <h2>Pace Race</h2>
+        <p>Type each answer to move your car. Reach the flag in 20 before the pace car, which drives at your own recent speed and speeds up as you do.</p>
+        <div class="foot"><span class="meta">Keypad or keyboard</span><span class="play">Play</span></div>
+      </div>
+    </a>
+    <a class="card arrays" href="arrays/">
+      <canvas data-preview="arrays" width="640" height="360" aria-hidden="true"></canvas>
+      <div class="body">
+        <span class="kicker">Times tables as pictures</span>
+        <h2>Array Grid</h2>
+        <p>Each fact is drawn as rows of dots. New facts show every dot; as a fact sticks, the dots fade, then disappear. Type the answer.</p>
+        <div class="foot"><span class="meta">Keypad or keyboard</span><span class="play">Play</span></div>
+      </div>
+    </a>
   </section>
 
-  <footer>Both games feed one schedule: what you practice in either comes back when it's due. Progress is per player; pick a name once on each device and it sticks.</footer>
+  <footer>All the games feed one schedule: what you practice in any of them comes back when it's due. Progress is per player; pick a name once on each device and it sticks.</footer>
 </div>
 
 <script src="config.js?v=__BUILD__"></script>
@@ -184,8 +231,53 @@ footer a{color:var(--fg-soft)}
     c.font = '22px ' + pixel; c.fillStyle = '#1c8a36'; c.textAlign = 'left'; c.fillText('> 16_', 24, H - 28); c.textAlign = 'right'; c.fillText('WAVE 3  SHIELDS ◤◥◣◢', W - 24, H - 28);
     c.fillStyle = 'rgba(0,0,0,.28)'; for (let y = 0; y < H; y += 4) c.fillRect(0, y, W, 2);
   }
+  function rr2(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function card(c, x, y, text, font, bg, fg, shadow) { c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle'; const w = c.measureText(text).width + 44, h = 62;
+    c.save(); if (shadow) { c.fillStyle = shadow; rr2(c, x - w / 2 + 5, y + 5, w, h, 12); c.fill(); } else { c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 14; c.shadowOffsetY = 5; } c.fillStyle = bg; rr2(c, x - w / 2, y, w, h, shadow ? 12 : h / 2); c.fill(); c.restore(); c.fillStyle = fg; c.fillText(text, x, y + h / 2 + 2); }
+  // Lily Hop: pond, pads -3..12, frog arcing from 4 toward 9
+  function drawHop(c, W, H, t) {
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#bfe9f2'); g.addColorStop(.4, '#e9f8ef'); g.addColorStop(.44, '#5cc4d6'); g.addColorStop(1, '#2b8ea8'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    card(c, W / 2, 22, '4 + 5 = ?', '700 40px Fredoka, sans-serif', '#fffdf6', '#123c4a');
+    const lo = -3, hi = 12, y = H * .7, px = n => 30 + (n - lo) * (W - 60) / (hi - lo);
+    for (let n = lo; n <= hi; n++) { c.fillStyle = '#5cb85c'; c.beginPath(); c.ellipse(px(n), y, 16, 7, 0, .25, Math.PI * 2 - .05); c.lineTo(px(n), y); c.fill();
+      c.font = '700 17px Fredoka, sans-serif'; c.textAlign = 'center'; c.fillStyle = n < 0 ? '#4361ee' : n > 0 ? '#2a9d8f' : '#123c4a'; c.fillText(String(n).replace('-', '−'), px(n), y + 22); }
+    const k = (t / 2400) % 1, step = Math.min(4, Math.floor(k * 6)), f = k * 6 - step, from = 4 + step, to = Math.min(9, from + 1), done = step >= 5;
+    const fx = done ? px(9) : px(from) + (px(to) - px(from)) * Math.min(1, f), fy = y - 14 - (done ? 0 : Math.sin(Math.min(1, f) * Math.PI) * 34);
+    c.fillStyle = '#7bd25b'; c.beginPath(); c.ellipse(fx, fy, 20, 15, 0, 0, Math.PI * 2); c.fill(); [-9, 9].forEach(e => { c.beginPath(); c.arc(fx + e, fy - 13, 7, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(fx + e, fy - 13, 4.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#123'; c.beginPath(); c.arc(fx + e + 1, fy - 12, 2, 0, Math.PI * 2); c.fill(); c.fillStyle = '#7bd25b'; });
+  }
+  // Bubble Pop: dusk water, problem card, four rising bubbles
+  function drawBubbles(c, W, H, t) {
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3b2a6b'); g.addColorStop(1, '#0f5c63'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    card(c, W / 2, 20, '6 × 7 = ?', '900 40px Nunito, sans-serif', '#f4f0ff', '#1e1b4b');
+    const vals = ['36', '42', '48', '49'], hues = [168, 262, 320, 40];
+    vals.forEach((v, i) => { const r = 40, x = W * (.17 + i * .22) + Math.sin(t / 700 + i) * 8, y = H + r - (((t / 5200) + i * .23) % 1) * (H - 70);
+      const gr = c.createRadialGradient(x - r * .35, y - r * .4, 4, x, y, r); gr.addColorStop(0, `hsla(${hues[i]},90%,92%,.6)`); gr.addColorStop(.7, `hsla(${hues[i]},80%,70%,.25)`); gr.addColorStop(1, `hsla(${hues[i]},90%,80%,.6)`);
+      c.fillStyle = gr; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.strokeStyle = `hsla(${hues[i]},90%,85%,.9)`; c.lineWidth = 2; c.stroke();
+      c.font = '900 30px Nunito, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff'; c.fillText(v, x, y + 2); });
+  }
+  // Pace Race: sky, hills, two lanes, cars nose to nose
+  function drawRace(c, W, H, t) {
+    c.fillStyle = '#ffe8c7'; c.fillRect(0, 0, W, H); c.fillStyle = '#ff9f1c'; c.beginPath(); c.arc(W * .85, H * .32, 26, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#f4a259'; c.beginPath(); c.moveTo(0, H * .52); for (let x = 0; x <= W; x += 20) c.lineTo(x, H * .45 - Math.sin(x / 90) * 14); c.lineTo(W, H * .52); c.fill();
+    c.fillStyle = '#8ac926'; c.fillRect(0, H * .5, W, H * .5); c.fillStyle = '#2d2d4a'; c.fillRect(0, H * .55, W, H * .38);
+    c.strokeStyle = '#fffaf0'; c.lineWidth = 3; c.setLineDash([20, 16]); c.lineDashOffset = -t / 10; c.beginPath(); c.moveTo(0, H * .74); c.lineTo(W, H * .74); c.stroke(); c.setLineDash([]);
+    for (let r = 0; r < 6; r++) for (let k = 0; k < 2; k++) { c.fillStyle = (r + k) % 2 ? '#1d1d3a' : '#fffaf0'; c.fillRect(W - 40 + k * 11.5, H * .55 + r * H * .38 / 6, 11.5, H * .38 / 6); }
+    const carAt = (x, y, col) => { c.fillStyle = '#1d1d3a'; rr2(c, x - 36, y - 10, 72, 22, 7); c.fill(); c.fillStyle = col; rr2(c, x - 34, y - 8, 68, 18, 6); c.fill(); c.fillStyle = '#1d1d3a'; c.beginPath(); c.moveTo(x - 14, y - 8); c.lineTo(x - 6, y - 22); c.lineTo(x + 14, y - 22); c.lineTo(x + 22, y - 8); c.fill(); [-20, 20].forEach(w => { c.beginPath(); c.arc(x + w, y + 11, 8, 0, Math.PI * 2); c.fill(); }); };
+    const k = (t / 6000) % 1; carAt(80 + k * (W - 200), H * .66, '#6c5ce7'); carAt(80 + Math.min(1, k * 1.08) * (W - 200), H * .85, '#ff6b35');
+    card(c, W / 2, 18, '9 × 6 = 54', 'italic 900 38px Rubik, sans-serif', '#fffaf0', '#1d1d3a', '#1d1d3a');
+  }
+  // Array Grid: graph paper, 4 rows of 6 dots filling in, skip-count down the side
+  function drawArrays(c, W, H, t) {
+    c.fillStyle = '#fffefa'; c.fillRect(0, 0, W, H); c.strokeStyle = '#d6e2f3'; c.lineWidth = 1; c.beginPath(); for (let x = .5; x < W; x += 22) { c.moveTo(x, 0); c.lineTo(x, H); } for (let y = .5; y < H; y += 22) { c.moveTo(0, y); c.lineTo(W, y); } c.stroke();
+    c.font = '700 44px Kalam, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#22304a'; c.fillText('4 × 6 = 24', W / 2, 52);
+    const s = 44, rows = 4, cols = 6, gx = W / 2 - cols * s / 2, gy = 100, n = Math.floor(((t / 600) % (rows + 2)));
+    c.strokeStyle = '#22304a'; c.lineWidth = 2; c.strokeRect(gx, gy, cols * s, rows * s); c.strokeStyle = '#a9bfe0'; c.beginPath(); c.moveTo(gx + 5 * s, gy); c.lineTo(gx + 5 * s, gy + rows * s); c.stroke();
+    for (let r = 0; r < rows; r++) { for (let k = 0; k < cols; k++) { c.fillStyle = r < n ? (r % 2 ? '#2f6fde' : '#ff8a3d') : 'rgba(34,48,74,.12)'; c.beginPath(); c.arc(gx + k * s + s / 2, gy + r * s + s / 2, s * .34, 0, Math.PI * 2); c.fill(); }
+      if (r < n) { c.font = '700 24px Kalam, sans-serif'; c.textAlign = 'left'; c.fillStyle = r === rows - 1 ? '#2b9348' : '#5b6884'; c.fillText(String((r + 1) * cols), gx + cols * s + 12, gy + r * s + s / 2); } }
+  }
+  const POSTERS = { slice: drawSlice, shooter: drawShooter, hop: drawHop, bubbles: drawBubbles, race: drawRace, arrays: drawArrays };
   document.querySelectorAll('canvas[data-preview]').forEach(cv => {
-    const c = cv.getContext('2d'), W = cv.width, H = cv.height, fn = cv.dataset.preview === 'slice' ? drawSlice : drawShooter;
+    const c = cv.getContext('2d'), W = cv.width, H = cv.height, fn = POSTERS[cv.dataset.preview] || drawSlice;
     const frame = t => { fn(c, W, H, t); if (!reduce) requestAnimationFrame(frame); };
     requestAnimationFrame(frame);
   });

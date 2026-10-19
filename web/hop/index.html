@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Lily Hop</title>
+<meta name="description" content="A frog hops along a number line. Tap where it lands.">
+<meta name="theme-color" content="#7fd1e6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="../css/kit.css?v=__BUILD__">
+<style>
+/* Layout: full-screen pond; HUD floats on top; the number line of lily pads runs across the middle. Sunny daytime pond, light look. */
+:root{--bg:#bfe9f2;--ink:#123c4a;--ink-soft:#2f6273;--ink-dim:#5f8b99;--accent:#ffb703;--accent-ink:#3d2600;--accent-deep:#e08e00;--card:#fffdf6;--card-edge:#cfe6e0;--font:"Fredoka",ui-rounded,system-ui,sans-serif;--radius:30px;--scrim:rgba(18,60,74,.25);--tile:#eef7f4;color-scheme:light}
+
+</style>
+</head>
+<body>
+<canvas id="stage" class="stage" aria-label="A pond with a number line of lily pads"></canvas>
+<header class="hud">
+  <div class="scorebox"><div class="score" id="hudScore">0</div><div class="sub" id="hudSub">Best 0</div></div>
+  <div class="mid"><div class="clock" id="hudClock">60</div><div class="sub" id="hudMid"></div></div>
+  <div class="right">
+    <div class="tools">
+      <a class="icon" href="../" title="Back to games" aria-label="Back to games">⌂</a>
+      <button class="icon" id="btnPause" title="Pause" aria-label="Pause">❚❚</button>
+      <button class="icon" id="btnSound" title="Sound" aria-label="Sound">♪</button>
+    </div>
+    <div class="meta"><span class="goal" id="hudGoal"></span><span class="sync" id="hudSync">LOCAL</span></div>
+  </div>
+</header>
+
+<div id="overlay" class="overlay"></div>
+<script src="../config.js?v=__BUILD__"></script>
+<script src="../js/facts.js?v=__BUILD__"></script>
+<script src="../js/scheduler.js?v=__BUILD__"></script>
+<script src="../js/store.js?v=__BUILD__"></script>
+<script src="../js/player.js?v=__BUILD__"></script>
+<script src="../js/sync.js?v=__BUILD__"></script>
+<script src="../js/kit.js?v=__BUILD__"></script>
+<script src="hop.js?v=__BUILD__"></script>
+</body>
+</html>
