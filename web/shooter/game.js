@@ -1,7 +1,7 @@
 /* Figures & Formulas — the MasterType-style game. One of possibly several front ends to FF.Scheduler. */
 (function () {
 'use strict';
-const VERSION = '2.3.0';
+const VERSION = '2.3.1';
 const $ = s => document.querySelector(s);
 const W = 560, H = 420, CX = 280, CY = 210;
 const { FAM, ITEMS, ORDER, fmt, hash } = FF.facts;
@@ -253,7 +253,7 @@ function draw() {
   if (shake > 0) ctx.translate((Math.random() - .5) * 8 * shake, (Math.random() - .5) * 8 * shake);
   ctx.fillStyle = COL.screen; ctx.fillRect(-10, -10, W + 20, H + 20);
   ctx.fillStyle = COL.faint; for (let i = 0; i < 40; i++) ctx.fillRect(hash('s' + i) % W, hash('t' + i) % H, 2, 2);
-  if (G) { drawShip(); if (G.boss) drawBoss(); for (const e of G.enemies) drawEnemy(e); drawInput(); }
+  if (G) { drawInput(); drawShip(); if (G.boss) drawBoss(); for (const e of G.enemies) drawEnemy(e); }
   for (const f of effects) drawEffect(f);
   if (banner && G) drawBanner();
   ctx.restore();
@@ -304,7 +304,8 @@ function drawEnemy(e) {
   }
   ctx.restore();
   ctx.font = '22px ' + css('--font-mono'); const t = e.reveal ? e.item.prompt + ' = ' + fmt(e.item.answer) : e.item.prompt; const tw = ctx.measureText(t).width + 12;
-  let bx = e.x - tw / 2, by = e.y + (e.y < CY ? -48 : 26); if (by < 6) by = e.y + 26; if (by > H - 34) by = e.y - 48; bx = Math.max(4, Math.min(W - tw - 4, bx));
+  // label on the inner side of the enemy, toward the ship, so it never meets the screen edge or the status line
+  let bx = e.x - tw / 2, by = e.y + (e.y < CY ? 28 : -52); bx = Math.max(4, Math.min(W - tw - 4, bx));
   ctx.fillStyle = COL.screen; ctx.fillRect(bx, by, tw, 24); ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.strokeRect(bx + .5, by + .5, tw - 1, 23);
   ctx.fillStyle = e.graded ? COL.warn : COL.white; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(t, bx + 6, by + 13);
   if (e.think > 0 && e.thinkTotal > 0) { const fr = e.think / e.thinkTotal; ctx.fillStyle = COL.faint; ctx.fillRect(bx, by + 26, tw, 4); ctx.fillStyle = COL.warn; ctx.fillRect(bx, by + 26, tw * fr, 4); }
