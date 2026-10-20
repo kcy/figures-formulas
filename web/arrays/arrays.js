@@ -3,7 +3,7 @@
  * or wrong, ends with the full array and the skip-count down the side, so the picture stays attached to the fact. */
 (function () {
 'use strict';
-const VERSION = '1.0.0', ROUND = 60;
+const VERSION = '1.1.0', ROUND = 60, UNTIMED_COUNT = 15;
 const K = FF.kit({ game: 'arrays', title: 'Array Grid', version: VERSION });
 const { fmt } = K;
 const $ = s => document.querySelector(s);
@@ -14,8 +14,14 @@ addEventListener('resize', resize); resize();
 
 const tableFact = it => (it.fam === 'mul' || it.fam === 'div') && it.layer === 1 && !!FF.distract.parse(it);
 let G = null, mode = 'title', lastT = 0, fx = [], banner = null;
+/* The clock starts off. Untimed rounds are 15 facts at his own pace. Once he has two untimed rounds in a row that are
+   accurate and quick, the 60-second timer switches itself on, unless the timer has been set by hand on the start screen. */
+const M = K.S.meta;
+const timedOn = () => M.arraysTimed === true;
+const autoOn = () => M.arraysAuto !== false;
+const median = a => { if (!a.length) return Infinity; const b = [...a].sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
 
-function newRound() { G = { t: 0, typed: '', q: null, score: 0, right: 0, wrong: 0, combo: 0, best: 0, practiced: new Set(), goalShown: false, gap: 0 }; fx = []; banner = null; K.sched.newSession(); }
+function newRound() { G = { timed: timedOn(), rts: [], t: 0, typed: '', q: null, score: 0, right: 0, wrong: 0, combo: 0, best: 0, practiced: new Set(), goalShown: false, gap: 0 }; fx = []; banner = null; K.sched.newSession(); }
 function nextQuestion() {
   const id = K.next(tableFact, { ignoreFamilies: true });
   if (!id) { G.q = null; banner = { text: 'No times-table facts left to show today', t: 0, life: 99 }; return; }
@@ -29,7 +35,7 @@ function submit() {
   const q = G.q; if (!q || q.done || mode !== 'play' || G.typed === '' || G.typed === '-') return;
   const n = +G.typed, it = q.it, ok = n === it.answer, rt = G.t - q.shownAt; G.practiced.add(q.id);
   K.report(q.id, ok, rt, { kind: 'produce', error: ok ? null : FF.distract.classify(it, n) });
-  q.done = true; q.ok = ok; q.doneAt = G.t;
+  q.done = true; q.ok = ok; q.doneAt = G.t; if (ok) G.rts.push(rt);
   if (ok) {
     G.right++; G.combo++; G.best = Math.max(G.best, G.combo);
     const fast = rt < FF.facts.FAM[it.fam].fast, pts = 10 + (fast ? 5 : 0) + (q.scaffold === 'none' ? 5 : 0) + Math.min(G.combo - 1, 10) * 2; G.score += pts;
@@ -56,15 +62,24 @@ function update(dt) {
   if (mode !== 'play') return;
   G.t += dt;
   const q = G.q;
-  if (ROUND - G.t <= 0 && (!q || !q.done || G.gap <= 0)) return end();
-  if (q && q.done) { q.reveal = Math.min(1, q.reveal + dt * 2.2); G.gap -= dt; if (G.gap <= 0) { if (ROUND - G.t <= 0) return end(); nextQuestion(); } }
+  const over = () => G.timed ? ROUND - G.t <= 0 : G.right + G.wrong >= UNTIMED_COUNT;
+  if (G.timed && over() && (!q || !q.done || G.gap <= 0)) return end();
+  if (q && q.done) { q.reveal = Math.min(1, q.reveal + dt * 2.2); G.gap -= dt; if (G.gap <= 0) { if (over()) return end(); nextQuestion(); } }
 }
 function end() {
-  mode = 'over'; K.setBest(G.score); K.finish({ wave: 0, score: G.score, answers: G.right + G.wrong, correct: G.right, facts: G.practiced.size, bestStreak: G.best, seconds: Math.round(G.t) }); K.sfx.win();
-  K.result({ heading: G.wrong === 0 && G.right > 0 ? 'Clean page!' : 'Pencils down!', stats: [[G.score, 'score'], [G.right, 'right'], [G.best, 'best streak']],
-    lines: [`${G.wrong} to look at again · best ${K.best()}`], onAgain: start });
+  mode = 'over'; if (G.timed) K.setBest(G.score);
+  let note = '';
+  if (!G.timed) {
+    const n = G.right + G.wrong, acc = n ? G.right / n : 0, med = median(G.rts), quick = med <= FF.facts.FAM.mul.fast * 1.5;
+    M.arraysGood = n >= 12 && acc >= .9 && quick ? (M.arraysGood || 0) + 1 : 0;
+    if (autoOn() && M.arraysGood >= 2) { M.arraysTimed = true; M.arraysGood = 0; note = 'Quick and accurate. Next round has a 60-second clock.'; }
+  } K.finish({ wave: 0, score: G.score, answers: G.right + G.wrong, correct: G.right, facts: G.practiced.size, bestStreak: G.best, seconds: Math.round(G.t) }); K.sfx.win();
+  const med = median(G.rts);
+  K.result({ heading: G.wrong === 0 && G.right > 0 ? 'Clean page!' : 'Pencils down!',
+    stats: G.timed ? [[G.score, 'score'], [G.right, 'right'], [G.best, 'best streak']] : [[`${G.right}/${G.right + G.wrong}`, 'right'], [isFinite(med) ? med.toFixed(1) + ' s' : '–', 'typical time'], [G.best, 'best streak']],
+    lines: [G.timed ? `${G.wrong} to look at again · best ${K.best()}` : `${G.wrong} to look at again`, note].filter(Boolean), onAgain: start });
 }
-function start() { newRound(); mode = 'play'; K.hide(); nextQuestion(); }
+function start() { newRound(); mode = 'play'; K.hide(); K.grabKeys(); nextQuestion(); }
 
 /* ---- draw ---- */
 const C = { paper: '#f7f5ee', grid: '#d6e2f3', grid5: '#a9bfe0', ink: '#22304a', blue: '#2f6fde', red: '#e5484d', dot: '#ff8a3d', dot2: '#2f6fde', green: '#2b9348', ghost: 'rgba(34,48,74,.12)' };
@@ -75,7 +90,7 @@ function draw(t) {
   ctx.lineWidth = 1; ctx.strokeStyle = C.grid; ctx.beginPath(); for (let x = .5; x < W; x += cell) { ctx.moveTo(x, 0); ctx.lineTo(x, H); } for (let y = .5; y < H; y += cell) { ctx.moveTo(0, y); ctx.lineTo(W, y); } ctx.stroke();
   ctx.strokeStyle = 'rgba(229,72,77,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(56 * U, 0); ctx.lineTo(56 * U, H); ctx.stroke(); // the notebook margin
   if (!G || !G.q || mode === 'title') return;
-  const q = G.q, it = q.it, padTop = pad.getBoundingClientRect().top || H * .7;
+  const q = G.q, it = q.it, padTop = K.padTop();
   // problem, handwritten across the top
   const fs = Math.round(Math.max(40, 62 * U)), ty = Math.max(100, H * .12);
   ctx.font = F(700, fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -119,14 +134,21 @@ function draw(t) {
 }
 function loop(t) { const dt = Math.min(.05, (t - lastT) / 1000 || 0); lastT = t; update(dt); if (mode === 'play') { for (const f of fx) f.t += dt; fx = fx.filter(f => f.t < f.life); if (banner) { banner.t += dt; if (banner.t > banner.life) banner = null; } } draw(t); hud(); requestAnimationFrame(loop); }
 function hud() {
-  const left = G && mode !== 'title' ? Math.max(0, ROUND - G.t) : ROUND; $('#hudClock').textContent = Math.ceil(left); $('#hudClock').classList.toggle('low', left <= 10);
+  if (G ? G.timed : timedOn()) { const left = G && mode !== 'title' ? Math.max(0, ROUND - G.t) : ROUND; $('#hudClock').textContent = Math.ceil(left); $('#hudClock').classList.toggle('low', left <= 10); }
+  else { $('#hudClock').textContent = `${G && mode !== 'title' ? Math.min(UNTIMED_COUNT, G.right + G.wrong + (G.q && !G.q.done ? 1 : 0)) : 0}/${UNTIMED_COUNT}`; $('#hudClock').classList.remove('low'); }
   $('#hudScore').textContent = G ? G.score : 0; $('#hudSub').textContent = 'Best ' + K.best(); $('#hudMid').textContent = G && G.combo >= 3 ? 'Streak ×' + G.combo : '';
   const n = K.sched.todayCount(), g = K.S.settings.goal; $('#hudGoal').textContent = (K.PLAYERS.length > 1 ? K.cap(K.player) + ' · ' : '') + (n >= g ? `Today ${n} ✓` : `Today ${n}/${g}`);
 }
-$('#btnPause').onclick = () => { if (mode === 'play') { mode = 'pause'; K.pauseCard(() => { mode = 'play'; K.hide(); lastT = performance.now(); }, () => { mode = 'play'; G.t = ROUND; if (G.q) G.q.done = true; G.gap = 0; }); } };
+$('#btnPause').onclick = () => { if (mode === 'play') { mode = 'pause'; K.pauseCard(() => { mode = 'play'; K.hide(); lastT = performance.now(); }, () => { K.hide(); end(); }); } };
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') $('#btnPause').click(); });
 K.sound($('#btnSound'));
-K.title({ heading: 'Array Grid', blurb: 'Times tables as rows of dots. <b>Type the answer.</b> New facts show every dot; facts you know well show fewer, then none.', extra: '<p class="small">Multiplication and division up to 10 × 10 · 60 seconds</p>', onPlay: start });
-window.__game = () => ({ G });
+function showTitle() {
+  K.title({ heading: 'Array Grid', blurb: 'Times tables as rows of dots. <b>Type the answer.</b> New facts show every dot; facts you know well show fewer, then none.',
+    extra: `<p class="small">Multiplication and division up to 10 × 10 · ${timedOn() ? '60 seconds' : UNTIMED_COUNT + ' facts, no clock'}</p>
+      <div class="row"><button class="btn ghost" id="ovTimer">Timer: ${timedOn() ? 'on' : 'off'}</button></div>`, onPlay: start });
+  $('#ovTimer').onclick = () => { M.arraysTimed = !timedOn(); M.arraysAuto = false; K.save(); showTitle(); };
+}
+showTitle();
+window.__game = () => ({ G, mode });
 requestAnimationFrame(loop);
 })();

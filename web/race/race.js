@@ -2,7 +2,7 @@
  * recent speed; beat it and it gets a little faster next time, lose and it eases off. 20 answers to the flag. */
 (function () {
 'use strict';
-const VERSION = '1.0.0', LAPS = 20, PACE_START = 4.5, PACE_MIN = 1.4, PACE_MAX = 9;
+const VERSION = '1.0.1', LAPS = 20, PACE_START = 4.5, PACE_MIN = 1.4, PACE_MAX = 9;
 const K = FF.kit({ game: 'race', title: 'Pace Race', version: VERSION });
 const { fmt } = K;
 const $ = s => document.querySelector(s);
@@ -88,7 +88,7 @@ function car(x, y, s, color, label, rot) {
   ctx.restore();
 }
 function draw(t) {
-  const padTop = pad.getBoundingClientRect().top || H * .7;
+  const padTop = K.padTop();
   const fs = Math.round(Math.max(34, 54 * U)), ty = Math.max(96, H * .12), ch = fs * 1.5;
   // sky and flat hills
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, C.sky); g.addColorStop(1, C.sky2); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);

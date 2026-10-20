@@ -128,15 +128,42 @@
       $('#ovRes').onclick = onResume; $('#ovEnd').onclick = onEnd; $('#ovHome').onclick = () => { onEnd(); K.home(); };
     };
 
-    /* ---- number pad (on screen + keyboard) ---- */
+    /* ---- number pad (on screen) + hardware keyboard ----
+     * iPadOS only delivers some hardware keys (Backspace among them) to a focused text field, so a hidden input
+     * with inputmode="none" holds focus while playing; it never brings up the on-screen keyboard.
+     * The on-screen pad shows by default on touch devices and hides itself the first time a real key is pressed.
+     * The ⌨ button in the HUD flips it either way, and the choice is remembered (S.settings.numpad, shared with the shooter). */
+    const isTouch = () => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+    K.padOn = () => (S.settings.numpad == null ? isTouch() : !!S.settings.numpad);
+    K.padTop = () => { const el = $('#keypad'); return el && !el.hidden ? el.getBoundingClientRect().top : innerHeight - 12; };
     K.keypad = (el, onKey) => {
       el.innerHTML = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '−', '0', '⌫'].map(k => `<button data-k="${k}">${k}</button>`).join('') + '<button data-k="go" class="go">Go</button>';
-      el.addEventListener('pointerdown', ev => { const b = ev.target.closest('button'); if (!b) return; ev.preventDefault(); K.audio(); const k = b.dataset.k; onKey(k === '−' ? '-' : k === '⌫' ? 'bs' : k); });
+      const kb = document.createElement('input'); Object.assign(kb, { id: 'kb', type: 'text', autocomplete: 'off', spellcheck: false, tabIndex: -1 });
+      kb.setAttribute('inputmode', 'none'); kb.setAttribute('autocorrect', 'off'); kb.setAttribute('autocapitalize', 'off'); kb.setAttribute('aria-label', 'Answer');
+      kb.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;font-size:16px;pointer-events:none;caret-color:transparent';
+      document.body.appendChild(kb);
+      const tools = document.querySelector('.hud .tools'); let btn = null;
+      if (tools) { btn = document.createElement('button'); btn.className = 'icon'; btn.id = 'btnPad'; btn.title = 'Show or hide the number pad'; btn.setAttribute('aria-label', 'Number pad'); btn.textContent = '⌨'; tools.insertBefore(btn, tools.lastElementChild); }
+      const apply = () => { el.hidden = !K.padOn(); if (btn) btn.style.opacity = K.padOn() ? 1 : .55; dispatchEvent(new Event('resize')); };
+      if (btn) btn.onclick = () => { S.settings.numpad = !K.padOn(); save(); apply(); K.grabKeys(); };
+      apply();
+      const hardware = () => { if (S.settings.numpad == null && K.padOn()) { S.settings.numpad = false; save(); apply(); } };
+      K.grabKeys = () => { if ($('#overlay').hidden) { try { kb.focus({ preventScroll: true }); } catch (e) {} } };
+      el.addEventListener('pointerdown', ev => { const b = ev.target.closest('button'); if (!b) return; ev.preventDefault(); K.audio(); const k = b.dataset.k; onKey(k === '−' ? '-' : k === '⌫' ? 'bs' : k); K.grabKeys(); });
       document.addEventListener('keydown', ev => {
-        const t = ev.target && ev.target.tagName; if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
-        if (/^[0-9]$/.test(ev.key)) onKey(ev.key); else if (ev.key === '-' || ev.key === '−') onKey('-'); else if (ev.key === 'Backspace' || ev.key === 'Delete') onKey('bs'); else if (ev.key === 'Enter') onKey('go'); else return;
-        ev.preventDefault();
+        const t = ev.target; if (t !== kb && t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+        if (!$('#overlay').hidden) { if (ev.key === 'Enter') { const b = $('#ovPlay') || $('#ovAgain') || $('#ovRes'); if (b) { b.click(); ev.preventDefault(); } } return; }
+        let k = null;
+        if (/^[0-9]$/.test(ev.key)) k = ev.key; else if (ev.key === '-' || ev.key === '−' || ev.key === 'Subtract') k = '-'; else if (ev.key === 'Backspace' || ev.key === 'Delete') k = 'bs'; else if (ev.key === 'Enter') k = 'go';
+        if (k == null) return; ev.preventDefault(); hardware(); onKey(k);
       });
+      kb.addEventListener('beforeinput', ev => { ev.preventDefault(); hardware();
+        if (ev.inputType === 'deleteContentBackward' || ev.inputType === 'deleteContentForward') onKey('bs');
+        else if (ev.inputType === 'insertLineBreak' || ev.inputType === 'insertParagraph') onKey('go');
+        else if (ev.inputType === 'insertText' && ev.data) for (const ch of ev.data) { if (/[0-9]/.test(ch)) onKey(ch); else if (ch === '-' || ch === '−') onKey('-'); } });
+      kb.addEventListener('input', () => { kb.value = ''; });
+      document.addEventListener('pointerdown', ev => { if (!ev.target.closest('.hud, .overlay')) K.grabKeys(); });
+      new MutationObserver(() => { if ($('#overlay').hidden) K.grabKeys(); }).observe($('#overlay'), { attributes: true, attributeFilter: ['hidden'] });
     };
     K.sound = btn => { const upd = () => { btn.textContent = S.settings.sound ? '♪' : '✕'; }; upd(); btn.onclick = () => { S.settings.sound = !S.settings.sound; save(); upd(); if (S.settings.sound) K.sfx.good(); }; };
     K.sync.load();
