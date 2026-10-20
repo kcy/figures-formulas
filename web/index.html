@@ -260,20 +260,25 @@ footer a{color:var(--fg-soft)}
     const fx = done ? px(9) : px(from) + (px(to) - px(from)) * Math.min(1, f), fy = y - 14 - (done ? 0 : Math.sin(Math.min(1, f) * Math.PI) * 34);
     c.fillStyle = '#7bd25b'; c.beginPath(); c.ellipse(fx, fy, 20, 15, 0, 0, Math.PI * 2); c.fill(); [-9, 9].forEach(e => { c.beginPath(); c.arc(fx + e, fy - 13, 7, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(fx + e, fy - 13, 4.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#123'; c.beginPath(); c.arc(fx + e + 1, fy - 12, 2, 0, Math.PI * 2); c.fill(); c.fillStyle = '#7bd25b'; });
   }
-  // Elevator Drop: sky over soil, floors −3..5 down the middle, the car riding from 2 up to 5
+  // Elevator Drop: a brick building, each floor its own room (walls only), negatives underground; the car rides from 2 up to 5
   function drawElevator(c, W, H, t) {
-    const lo = -3, hi = 5, top = 96, rh = (H - top - 8) / (hi - lo + 1), fy = n => top + (hi - n) * rh, gy = fy(0) + rh;
-    let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8fd3ff'); g.addColorStop(1, '#c9ecff'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-    g = c.createLinearGradient(0, gy, 0, H); g.addColorStop(0, '#8a5b3a'); g.addColorStop(1, '#4e3221'); c.fillStyle = g; c.fillRect(0, gy, W, H - gy); c.fillStyle = '#3d8b37'; c.fillRect(0, gy - 3, W, 6);
+    const lo = -3, hi = 5, top = 96, rh = (H - top - 8) / (hi - lo + 1), fy = n => top + (hi - n) * rh + (n < 0 ? 4 : 0), gy = fy(0) + rh;
+    const WALL = { 5: '#2b1a46', 4: '#cfe3f2', 3: '#f8c8d4', 2: '#ffe066', 1: '#b6ecf2', 0: '#efe3c8', '-1': '#9aa0a8', '-2': '#cdeeff', '-3': '#6b4636' };
+    let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#7cc8ff'); g.addColorStop(1, '#c9ecff'); c.fillStyle = g; c.fillRect(0, 0, W, H);
     card(c, W / 2, 18, '2 + 3 = ?', '800 40px "Baloo 2", sans-serif', '#ffffff', '#16263d');
-    const bx0 = W * .22, bx1 = W * .78, sx = bx1 - 56;
-    c.fillStyle = 'rgba(255,255,255,.55)'; rr2(c, bx0, top - 4, bx1 - bx0, H - top, 10); c.fill(); c.fillStyle = 'rgba(22,38,61,.16)'; c.fillRect(sx, top, 52, H - top - 8);
+    const bx0 = W * .2, bx1 = W * .8, sx = bx1 - 64;
+    c.fillStyle = '#6c7380'; c.fillRect(bx0, top - 6, bx1 - bx0, 6);
+    c.fillStyle = '#b85a3e'; c.fillRect(bx0, top, bx1 - bx0, gy - top); c.fillStyle = '#7a5236'; c.fillRect(0, gy, W, H - gy); c.fillStyle = '#6e4a30'; c.fillRect(bx0, gy, bx1 - bx0, H - gy);
+    c.fillStyle = '#55b04a'; c.fillRect(0, gy, W, 4);
     const k = (t / 3600) % 1, e = k < .3 ? 0 : k > .7 ? 1 : (1 - Math.cos((k - .3) / .4 * Math.PI)) / 2, at = 2 + 3 * e;
-    for (let n = lo; n <= hi; n++) { const y = fy(n); c.fillStyle = n === 5 && k > .7 ? '#2fbf71' : n < 0 ? '#6e4a31' : '#2f6f8f'; rr2(c, bx0 + 40, y + 2, sx - bx0 - 48, rh - 4, 5); c.fill();
-      c.fillStyle = n < 0 ? 'rgba(255,214,140,.35)' : 'rgba(255,255,255,.45)'; for (let x = bx0 + 52; x < sx - 30; x += 26) { rr2(c, x, y + rh * .28, 13, rh * .4, 2); c.fill(); }
-      c.font = '800 18px "Baloo 2", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = n < 0 ? '#fff3e6' : '#16263d'; c.fillText(String(n).replace('-', '−'), bx0 + 20, y + rh / 2 + 1); }
-    const cy = fy(at); c.fillStyle = '#f2b632'; c.strokeStyle = '#b9821a'; c.lineWidth = 3; rr2(c, sx + 3, cy + 3, 46, rh - 6, 7); c.fill(); c.stroke();
-    c.font = '800 18px "Baloo 2", sans-serif'; c.fillStyle = '#2b1d00'; c.fillText(String(Math.round(at)), sx + 26, cy + rh / 2 + 1);
+    for (let n = lo; n <= hi; n++) { const y = fy(n); c.fillStyle = WALL[n]; c.fillRect(bx0 + 40, y + 2, sx - bx0 - 40, rh - 3); c.fillStyle = 'rgba(0,0,0,.15)'; c.fillRect(bx0 + 40, y + rh - 6, sx - bx0 - 40, 5);
+      if (n === 5 && k > .7) { c.fillStyle = 'rgba(47,191,113,.55)'; c.fillRect(bx0 + 40, y + 2, sx - bx0 - 40, rh - 3); }
+      c.fillStyle = '#fff4d6'; c.strokeStyle = '#23233a'; c.lineWidth = 2; rr2(c, bx0 + 6, y + rh / 2 - 11, 28, 22, 6); c.fill(); c.stroke();
+      c.font = '800 16px "Baloo 2", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#16263d'; c.fillText(String(n).replace('-', '−'), bx0 + 20, y + rh / 2 + 1); }
+    c.fillStyle = '#353b46'; c.fillRect(sx, top, 52, H - top);
+    const cy = top + (hi - at) * rh; c.fillStyle = '#1d2129'; c.fillRect(sx + 25, top, 2, cy - top);
+    c.fillStyle = '#f2b632'; c.strokeStyle = '#b9821a'; c.lineWidth = 3; rr2(c, sx + 4, cy + 3, 44, rh - 6, 7); c.fill(); c.stroke();
+    c.font = '800 16px "Baloo 2", sans-serif'; c.fillStyle = '#2b1d00'; c.fillText(String(Math.round(at)), sx + 26, cy + rh / 2 + 1);
   }
   // Bubble Pop: dusk water, problem card, four rising bubbles
   function drawBubbles(c, W, H, t) {
