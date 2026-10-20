@@ -34,6 +34,32 @@ apps-script/Code.gs  paste into the Sheet's Apps Script editor; see the header c
 tools/export-facts.js  dumps the generated fact set as CSV
 ```
 
+## Reading the code from a chat
+
+If you can only fetch web pages (not clone), every file is readable at a raw URL. Start with CLAUDE.md, then the kit and one kit game:
+
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/CLAUDE.md
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/js/kit.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/css/kit.css
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/js/facts.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/js/scheduler.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/js/player.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/js/store.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/js/sync.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/config.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/sw.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/index.html
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/hop/index.html
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/hop/hop.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/bubbles/index.html
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/bubbles/bubbles.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/race/index.html
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/race/race.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/arrays/index.html
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/arrays/arrays.js
+
+To push changes you need a real clone: use Claude Code with GitHub connected, as a collaborator on this repo.
+
 ## Connect the Google Sheet (one time, ~5 minutes)
 
 1. Create a blank Google Sheet. Extensions → Apps Script. Replace the contents with `apps-script/Code.gs`.
