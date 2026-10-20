@@ -7,6 +7,7 @@ Math fluency games on one spaced-repetition scheduler. Live at https://kcy.githu
 | Figures & Formulas | `web/shooter/` | type (MasterType-style shooter) | yes |
 | Slice of Truth | `web/slice/` | pick: slice the right fruit | no (schedules only) |
 | Lily Hop | `web/hop/` | tap the pad on a number line (+, −, negatives) | no |
+| Elevator Drop | `web/elevator/` | tap the floor where the elevator stops (negatives underground) | no |
 | Bubble Pop | `web/bubbles/` | pop the right rising bubble | no |
 | Pace Race | `web/race/` | type, racing a pace car that adapts | yes |
 | Array Grid | `web/arrays/` | type; times tables drawn as dot arrays | yes |
@@ -28,7 +29,7 @@ web/                 served as-is by GitHub Pages
   js/sync.js         load/save against the Sheet, shared by every game
   js/kit.js, css/kit.css   shared kit for the newer games (player, scheduler, sync, think time, sound, overlays, keypad)
   shooter/, slice/   the first two games (self-contained)
-  hop/, bubbles/, race/, arrays/   built on the kit: index.html (look) + one game .js
+  hop/, elevator/, bubbles/, race/, arrays/   built on the kit: index.html (look) + one game .js
   sw.js, manifest    offline support and "Add to Home Screen"
 apps-script/Code.gs  paste into the Sheet's Apps Script editor; see the header comment
 tools/export-facts.js  dumps the generated fact set as CSV
@@ -51,6 +52,8 @@ If you can only fetch web pages (not clone), every file is readable at a raw URL
 - https://raw.githubusercontent.com/kcy/figures-formulas/main/web/index.html
 - https://raw.githubusercontent.com/kcy/figures-formulas/main/web/hop/index.html
 - https://raw.githubusercontent.com/kcy/figures-formulas/main/web/hop/hop.js
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/elevator/index.html
+- https://raw.githubusercontent.com/kcy/figures-formulas/main/web/elevator/elevator.js
 - https://raw.githubusercontent.com/kcy/figures-formulas/main/web/bubbles/index.html
 - https://raw.githubusercontent.com/kcy/figures-formulas/main/web/bubbles/bubbles.js
 - https://raw.githubusercontent.com/kcy/figures-formulas/main/web/race/index.html

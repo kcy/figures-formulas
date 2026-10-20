@@ -82,6 +82,9 @@ h1 small{font-weight:600;color:var(--fg-dim);font-size:.5em;margin-left:8px}
 .card.arrays{background:#fffefa;background-image:linear-gradient(#d6e2f3 1px,transparent 1px),linear-gradient(90deg,#d6e2f3 1px,transparent 1px);background-size:22px 22px;font-family:"Patrick Hand",var(--font)}
 .card.arrays .kicker{color:#2f6fde;font-size:15px}.card.arrays h2{color:#22304a;font-family:Kalam,var(--font);font-weight:700}.card.arrays p{color:#44506a;font-size:17px}.card.arrays .meta{color:#7c8598}
 .card.arrays .play{background:#2f6fde;color:#fff;border-radius:8px;box-shadow:0 3px 0 #1f4fa8}
+.card.elevator{background:linear-gradient(180deg,#dff3ff,#c9ecff)}
+.card.elevator .kicker{color:#2f6f8f}.card.elevator h2{color:#16263d}.card.elevator p{color:#33496a}.card.elevator .meta{color:#5a6b82}
+.card.elevator .play{background:#f2b632;color:#2b1d00;box-shadow:0 3px 0 #b9821a}
 .soon{border-style:dashed;opacity:.7;align-items:center;justify-content:center;min-height:200px;color:var(--fg-dim);font-weight:700;text-align:center;padding:20px}
 footer{color:var(--fg-dim);font-size:14px}
 footer a{color:var(--fg-soft)}
@@ -127,6 +130,15 @@ footer a{color:var(--fg-soft)}
         <h2>Lily Hop</h2>
         <p>The frog starts on the first number. Tap the lily pad where it lands: left to subtract, right to add. A wrong guess shows the real hop.</p>
         <div class="foot"><span class="meta">iPad · touch</span><span class="play">Play</span></div>
+      </div>
+    </a>
+    <a class="card elevator" href="elevator/">
+      <canvas data-preview="elevator" width="640" height="360" aria-hidden="true"></canvas>
+      <div class="body">
+        <span class="kicker">Number line · signed numbers</span>
+        <h2>Elevator Drop</h2>
+        <p>The floors are numbers and the negatives are underground. The elevator rides to the first number; tap the floor where it stops. No clock, 12 trips.</p>
+        <div class="foot"><span class="meta">iPad · touch or arrow keys</span><span class="play">Play</span></div>
       </div>
     </a>
     <a class="card bubbles" href="bubbles/">
@@ -248,6 +260,21 @@ footer a{color:var(--fg-soft)}
     const fx = done ? px(9) : px(from) + (px(to) - px(from)) * Math.min(1, f), fy = y - 14 - (done ? 0 : Math.sin(Math.min(1, f) * Math.PI) * 34);
     c.fillStyle = '#7bd25b'; c.beginPath(); c.ellipse(fx, fy, 20, 15, 0, 0, Math.PI * 2); c.fill(); [-9, 9].forEach(e => { c.beginPath(); c.arc(fx + e, fy - 13, 7, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(fx + e, fy - 13, 4.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#123'; c.beginPath(); c.arc(fx + e + 1, fy - 12, 2, 0, Math.PI * 2); c.fill(); c.fillStyle = '#7bd25b'; });
   }
+  // Elevator Drop: sky over soil, floors −3..5 down the middle, the car riding from 2 up to 5
+  function drawElevator(c, W, H, t) {
+    const lo = -3, hi = 5, top = 96, rh = (H - top - 8) / (hi - lo + 1), fy = n => top + (hi - n) * rh, gy = fy(0) + rh;
+    let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8fd3ff'); g.addColorStop(1, '#c9ecff'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    g = c.createLinearGradient(0, gy, 0, H); g.addColorStop(0, '#8a5b3a'); g.addColorStop(1, '#4e3221'); c.fillStyle = g; c.fillRect(0, gy, W, H - gy); c.fillStyle = '#3d8b37'; c.fillRect(0, gy - 3, W, 6);
+    card(c, W / 2, 18, '2 + 3 = ?', '800 40px "Baloo 2", sans-serif', '#ffffff', '#16263d');
+    const bx0 = W * .22, bx1 = W * .78, sx = bx1 - 56;
+    c.fillStyle = 'rgba(255,255,255,.55)'; rr2(c, bx0, top - 4, bx1 - bx0, H - top, 10); c.fill(); c.fillStyle = 'rgba(22,38,61,.16)'; c.fillRect(sx, top, 52, H - top - 8);
+    const k = (t / 3600) % 1, e = k < .3 ? 0 : k > .7 ? 1 : (1 - Math.cos((k - .3) / .4 * Math.PI)) / 2, at = 2 + 3 * e;
+    for (let n = lo; n <= hi; n++) { const y = fy(n); c.fillStyle = n === 5 && k > .7 ? '#2fbf71' : n < 0 ? '#6e4a31' : '#2f6f8f'; rr2(c, bx0 + 40, y + 2, sx - bx0 - 48, rh - 4, 5); c.fill();
+      c.fillStyle = n < 0 ? 'rgba(255,214,140,.35)' : 'rgba(255,255,255,.45)'; for (let x = bx0 + 52; x < sx - 30; x += 26) { rr2(c, x, y + rh * .28, 13, rh * .4, 2); c.fill(); }
+      c.font = '800 18px "Baloo 2", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = n < 0 ? '#fff3e6' : '#16263d'; c.fillText(String(n).replace('-', '−'), bx0 + 20, y + rh / 2 + 1); }
+    const cy = fy(at); c.fillStyle = '#f2b632'; c.strokeStyle = '#b9821a'; c.lineWidth = 3; rr2(c, sx + 3, cy + 3, 46, rh - 6, 7); c.fill(); c.stroke();
+    c.font = '800 18px "Baloo 2", sans-serif'; c.fillStyle = '#2b1d00'; c.fillText(String(Math.round(at)), sx + 26, cy + rh / 2 + 1);
+  }
   // Bubble Pop: dusk water, problem card, four rising bubbles
   function drawBubbles(c, W, H, t) {
     const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3b2a6b'); g.addColorStop(1, '#0f5c63'); c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -278,7 +305,7 @@ footer a{color:var(--fg-soft)}
     for (let r = 0; r < rows; r++) { for (let k = 0; k < cols; k++) { c.fillStyle = r < n ? (r % 2 ? '#2f6fde' : '#ff8a3d') : 'rgba(34,48,74,.12)'; c.beginPath(); c.arc(gx + k * s + s / 2, gy + r * s + s / 2, s * .34, 0, Math.PI * 2); c.fill(); }
       if (r < n) { c.font = '700 24px Kalam, sans-serif'; c.textAlign = 'left'; c.fillStyle = r === rows - 1 ? '#2b9348' : '#5b6884'; c.fillText(String((r + 1) * cols), gx + cols * s + 12, gy + r * s + s / 2); } }
   }
-  const POSTERS = { slice: drawSlice, shooter: drawShooter, hop: drawHop, bubbles: drawBubbles, race: drawRace, arrays: drawArrays };
+  const POSTERS = { slice: drawSlice, shooter: drawShooter, hop: drawHop, elevator: drawElevator, bubbles: drawBubbles, race: drawRace, arrays: drawArrays };
   document.querySelectorAll('canvas[data-preview]').forEach(cv => {
     const c = cv.getContext('2d'), W = cv.width, H = cv.height, fn = POSTERS[cv.dataset.preview] || drawSlice;
     const frame = t => { fn(c, W, H, t); if (!reduce) requestAnimationFrame(frame); };
