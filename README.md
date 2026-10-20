@@ -1,12 +1,18 @@
 # Figures & Formulas
 
-Math fluency games on one spaced-repetition scheduler. Two so far:
+Math fluency games on one spaced-repetition scheduler. Live at https://kcy.github.io/figures-formulas/.
 
-- **Figures & Formulas** (`web/shooter/`): MasterType-style. Enemies carry problems; type the answer and the ship fires. Production practice.
-- **Slice of Truth** (`web/slice/`): equations fly up on fruit; slice the false ones. Verification practice, with the kind of each mistake recorded.
+| Game | Folder | How you answer | Counts toward fluent? |
+|---|---|---|---|
+| Figures & Formulas | `web/shooter/` | type (MasterType-style shooter) | yes |
+| Slice of Truth | `web/slice/` | pick: slice the right fruit | no (schedules only) |
+| Lily Hop | `web/hop/` | tap the pad on a number line (+, −, negatives) | no |
+| Bubble Pop | `web/bubbles/` | pop the right rising bubble | no |
+| Pace Race | `web/race/` | type, racing a pace car that adapts | yes |
+| Array Grid | `web/arrays/` | type; times tables drawn as dot arrays | yes |
 
-The hub (`web/index.html`) picks the player and the game. Both games report to the same scheduler and the same Sheet, so a fact drilled in one comes due in the other.
-Only typed answers can make a fact *fluent*; slicing schedules it but never promotes it on recognition alone.
+The hub (`web/index.html`) picks the player and the game. Every game reports to the same scheduler and the same Sheet, so a fact drilled in one comes due in the others.
+Only typed answers can make a fact *fluent*; picking games schedule a fact but never promote it on recognition alone.
 
 ## Layout
 
@@ -20,8 +26,9 @@ web/                 served as-is by GitHub Pages
   js/store.js        LocalStore (browser) and SheetStore (Google Sheet via Apps Script)
   js/player.js       who is playing (remembered per device; ?player= overrides)
   js/sync.js         load/save against the Sheet, shared by every game
-  shooter/           Figures & Formulas (typed answers)
-  slice/             Slice of Truth (catch the false equations)
+  js/kit.js, css/kit.css   shared kit for the newer games (player, scheduler, sync, think time, sound, overlays, keypad)
+  shooter/, slice/   the first two games (self-contained)
+  hop/, bubbles/, race/, arrays/   built on the kit: index.html (look) + one game .js
   sw.js, manifest    offline support and "Add to Home Screen"
 apps-script/Code.gs  paste into the Sheet's Apps Script editor; see the header comment
 tools/export-facts.js  dumps the generated fact set as CSV
@@ -48,8 +55,9 @@ Push to `main`. The Pages workflow deploys `web/` and stamps the service-worker 
 
 ## Adding a game
 
-A game needs four calls: `FF.player.current()` for who, `FF.store.LocalStore.load/save` for state, `new FF.Scheduler(FF.facts, S, {onChange})`
-for `next()` / `report(id, ok, seconds, {kind, error, fastMul})`, and `new FF.Sync({...})` for the Sheet. Copy `slice/` as a template and add a card to the hub.
+Copy one of `hop/`, `bubbles/`, `race/` or `arrays/`. `FF.kit({ game, title, version })` wires up the player, scheduler, Sheet sync, think time,
+sound and the title/result/pause cards; the game file only draws its world and calls `K.next(filter)` and `K.report(id, ok, seconds, {kind, error})`.
+Then add a card and poster to `web/index.html` and the new files to `SHELL` in `web/sw.js` (the offline cache fails if a listed file is missing).
 
 ## Adding knowledge
 
