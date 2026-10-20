@@ -5,9 +5,11 @@
  * No clock: a round is 12 trips. Built for signed-number sense, like Lily Hop turned on its side. */
 (function () {
 'use strict';
-const VERSION = '1.1.0', TRIPS = 12, TOP = 8, BOTTOM = -8;
+const VERSION = '1.2.0', TRIPS = 12, TOP = 8, BOTTOM = -8;
 const K = FF.kit({ game: 'elevator', title: 'Elevator Drop', version: VERSION });
 const { fmt } = K;
+/* who rides the car: the player's own face */
+const RIDER = { krishna: '🧔🏾‍♂️', nabil: '🧑🏻' }[K.player] || (FF.player.isGuest(K.player) ? '🙂' : '🧑');
 const $ = s => document.querySelector(s);
 const cv = $('#stage'), ctx = cv.getContext('2d');
 const FONT = '"Baloo 2", ui-rounded, system-ui, sans-serif';
@@ -19,7 +21,7 @@ function layout() {
   const fs = Math.round(Math.max(34, 54 * U)), wide = W >= H * 1.05 && W >= 700, s = Math.min(1.2, Math.max(.8, U));
   if (wide) { const bw = Math.min(640 * U, W * .56), bx1 = W - Math.max(16, W * .02); L = { wide, fs, bx0: bx1 - bw, bx1, by0: 84, by1: H - 14, px: (bx1 - bw) / 2, pw: bx1 - bw - 32, ty: H * .34 }; }
   else { const bw = W - 32, ty = Math.max(96, H * .09); L = { wide, fs, bx0: 16, bx1: W - 16, by0: ty + fs * 1.5 + 60 * U, by1: H - 14, px: W / 2, pw: W - 24, ty }; }
-  L.lw = 52 * s; L.sw = 74 * s; L.edge = 22 * s; L.gnd = 10;
+  L.lw = 52 * s; L.sw = 74 * s; L.edge = 22 * s; L.gnd = 18;
   L.rh = (L.by1 - L.by0 - L.gnd) / (TOP - BOTTOM + 1 + 1.25); L.roof = L.rh * 1.25;
   L.rx0 = L.bx0 + L.lw; L.sx = L.bx1 - L.edge - L.sw; L.rx1 = L.sx;
 }
@@ -503,8 +505,17 @@ function paintSvg(img, x, y, w, h, bg) {
 }
 function draw() {
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, C.sky1); g.addColorStop(1, C.sky2); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  drawGround();
   drawBuilding();
   if (G && (G.q || G.say)) drawPanel();
+}
+/* the ground runs the full width of the screen: a grass surface at the bottom of floor 0, soil below it */
+function drawGround() {
+  const gy = floorTop(0) + L.rh, gnd = L.gnd;
+  const sg = ctx.createLinearGradient(0, gy, 0, H); sg.addColorStop(0, '#8a5b3a'); sg.addColorStop(1, '#4e3221'); ctx.fillStyle = sg; ctx.fillRect(0, gy, W, H - gy);
+  ctx.save(); ctx.globalAlpha = .45; ctx.fillStyle = SOIL; ctx.fillRect(0, gy, W, H - gy); ctx.restore();
+  ctx.fillStyle = '#55b04a'; ctx.fillRect(0, gy, W, gnd * .5); ctx.fillStyle = '#3c8a34'; ctx.fillRect(0, gy + gnd * .5, W, gnd * .15);
+  ctx.fillStyle = '#55b04a'; for (let x = 4; x < W; x += 14) { ctx.beginPath(); ctx.moveTo(x, gy + 1); ctx.lineTo(x + 3, gy - 6); ctx.lineTo(x + 6, gy + 1); ctx.fill(); }
 }
 function drawBuilding() {
   const { bx0, bx1, by0, by1, rh, roof, lw, sw, sx, rx0, rx1, gnd } = L, play = G && mode !== 'title';
@@ -537,7 +548,7 @@ function drawBuilding() {
   ctx.fillStyle = '#1d2129'; ctx.fillRect(cx + cw / 2 - 1.5, by0 + roof, 3, cy + 4 - by0 - roof);
   ctx.fillStyle = 'rgba(0,0,0,.3)'; rr(cx, cy + 7, cw, ch, 8); ctx.fill();
   const cg = ctx.createLinearGradient(0, cy + 4, 0, cy + 4 + ch); cg.addColorStop(0, '#ffd25e'); cg.addColorStop(1, C.car); ctx.fillStyle = cg; ctx.strokeStyle = C.car2; ctx.lineWidth = 3; rr(cx, cy + 4, cw, ch, 8); ctx.fill(); ctx.stroke();
-  const es = Math.round(Math.min(ch * .7, 28 * U)); ctx.font = `${es}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🧑', cx + cw / 2, cy + 4 + ch / 2 + es * .05);
+  const es = Math.round(Math.min(ch * .7, 28 * U)); ctx.font = `${es}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(RIDER, cx + cw / 2, cy + 4 + ch / 2 + es * .05);
   // the floor display above the car
   const ds = Math.round(Math.max(12, 14 * U)); ctx.font = `800 ${ds}px ${FONT}`; const dt = fmt(Math.round(f)), dw = ctx.measureText(dt).width + 12, dh = ds * 1.4, dy = Math.max(by0 + 2, cy + 4 - dh - 2);
   ctx.fillStyle = '#111c2e'; rr(cx + cw / 2 - dw / 2, dy, dw, dh, 6); ctx.fill(); ctx.fillStyle = '#ffcf5a'; ctx.fillText(dt, cx + cw / 2, dy + dh / 2 + ds * .06);
